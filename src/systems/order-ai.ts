@@ -2,20 +2,20 @@ import type { StationType } from "../assets/stations";
 import { moveToward } from "../core/navigation";
 import { stationFinder } from "../core/stations";
 import {
-	type AssemblyState,
 	CASH_REGISTER,
 	INGREDIENT_STATIONS,
-	isAssemblyComplete,
+	isOrderComplete,
 	type Item,
 	ITEM_BURGER,
 	nextNeeded,
+	type OrderState,
 	SERVING_COUNTER,
 } from "../config/recipes";
 import type { GameContext } from "../shared/context";
 
 function nextTargetType(
 	item: Item | null,
-	assembly: AssemblyState | undefined,
+	order: OrderState | null | undefined,
 ): StationType | undefined {
 	if (item === ITEM_BURGER) {
 		return CASH_REGISTER;
@@ -25,15 +25,11 @@ function nextTargetType(
 		return SERVING_COUNTER;
 	}
 
-	if (!assembly) {
-		return undefined;
-	}
-
-	if (isAssemblyComplete(assembly)) {
+	if (!order || isOrderComplete(order)) {
 		return SERVING_COUNTER;
 	}
 
-	const needed = nextNeeded(assembly);
+	const needed = nextNeeded(order);
 	return needed ? INGREDIENT_STATIONS[needed] : undefined;
 }
 
@@ -43,8 +39,7 @@ export function createOrderAiSystem({ world }: GameContext) {
 
 	return () => {
 		for (const cook of cooks) {
-			const counter = stations.assembler(SERVING_COUNTER);
-			const type = nextTargetType(cook.carry.item, counter?.assembly);
+			const type = nextTargetType(cook.carry.item, cook.order);
 			const station = type ? stations.byType(type) : undefined;
 
 			if (!type || !station) {

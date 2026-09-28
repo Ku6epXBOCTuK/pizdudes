@@ -1,41 +1,49 @@
+import type { With } from "miniplex";
 import type { StationType } from "../assets/stations";
 import { hasArrived } from "../core/navigation";
-import { stationFinder, type Stations } from "../core/stations";
 import { AI_ACTION_COOLDOWN_MS } from "../constants";
 import {
 	CASH_REGISTER,
-	type CarryState,
-	createAssembly,
+	createOrder,
 	INGREDIENT_STATIONS,
-	isAssemblyComplete,
+	isOrderComplete,
 	ITEM_BURGER,
 	nextNeeded,
 	SERVING_COUNTER,
 } from "../config/recipes";
+import type { Entity } from "../core/world";
 import type { GameContext } from "../shared/context";
 
-function interact(
-	stations: Stations,
-	target: StationType,
-	carry: CarryState,
-): boolean {
-	const counter = stations.assembler(SERVING_COUNTER);
+type OrderCook = With<Entity, "carry" | "order">;
 
-	if (target === SERVING_COUNTER && counter) {
+function interact(target: StationType, cook: OrderCook): boolean {
+	const carry = cook.carry;
+	const order = cook.order;
+
+	if (target === SERVING_COUNTER) {
 		if (carry.item === null) {
-			if (!isAssemblyComplete(counter.assembly)) {
-				return false;
+			if (!order) {
+				cook.order = createOrder();
+				return true;
 			}
 
-			carry.item = ITEM_BURGER;
-			return true;
-		}
+			if (isOrderComplete(order)) {
+				carry.item = ITEM_BURGER;
+				return true;
+			}
 
-		if (nextNeeded(counter.assembly) !== carry.item) {
 			return false;
 		}
 
-		counter.assembly.placed.push(carry.item);
+		if (carry.item === ITEM_BURGER || !order) {
+			return false;
+		}
+
+		if (nextNeeded(order) !== carry.item) {
+			return false;
+		}
+
+		order.placed.push(carry.item);
 		carry.item = null;
 		return true;
 	}
@@ -46,20 +54,17 @@ function interact(
 		}
 
 		carry.item = null;
-		if (counter) {
-			counter.assembly = createAssembly();
-		}
-
+		cook.order = null;
 		return true;
 	}
 
-	const needed = counter ? nextNeeded(counter.assembly) : undefined;
+	if (carry.item !== null || !order) {
+		return false;
+	}
 
-	if (
-		carry.item !== null ||
-		!needed ||
-		INGREDIENT_STATIONS[needed] !== target
-	) {
+	const needed = nextNeeded(order);
+
+	if (!needed || INGREDIENT_STATIONS[needed] !== target) {
 		return false;
 	}
 
@@ -68,8 +73,7 @@ function interact(
 }
 
 export function createOrderAssemblySystem({ world }: GameContext) {
-	const cooks = world.with("position", "carry", "target");
-	const stations = stationFinder(world);
+	const cooks = world.with("position", "carry", "order", "target");
 
 	return (dt: number) => {
 		for (const cook of cooks) {
@@ -80,7 +84,7 @@ export function createOrderAssemblySystem({ world }: GameContext) {
 				continue;
 			}
 
-			if (interact(stations, cook.target.type, carry)) {
+			if (interact(cook.target.type, cook)) {
 				carry.cooldownMs = AI_ACTION_COOLDOWN_MS;
 			}
 		}

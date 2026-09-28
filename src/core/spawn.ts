@@ -6,16 +6,12 @@ import {
 	type Texture,
 	TilingSprite,
 } from "pixi.js";
-
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import { FIELD_SLOTS } from "../config/field";
-import {
-	createAssembly,
-	createCarryState,
-	SERVING_COUNTER,
-} from "../config/recipes";
+import { createCarryState } from "../config/recipes";
 import type { GameAssets, GameContext } from "../shared/context";
+import { createCookBadge } from "../ui/cook-badge";
 import type { Entity, Vector2 } from "./world";
 
 export interface Size {
@@ -24,6 +20,7 @@ export interface Size {
 }
 
 const FLOOR_LABEL = "floor";
+const COOK_NAME = "Повар";
 
 export function spawnFloor(
 	layer: Container,
@@ -59,24 +56,19 @@ export function spawnStations(
 		const view = new Sprite(assets.stations[slot.station]);
 		view.anchor.set(0.5);
 
-		const station: Entity = {
+		world.add({
 			position: { x: slot.x * screen.width, y: slot.y * screen.height },
 			view,
 			stationTag: true,
 			stationType: slot.station,
-		};
-
-		if (slot.station === SERVING_COUNTER) {
-			station.assembly = createAssembly();
-		}
-
-		world.add(station);
+		});
 	}
 }
 
 export function spawnCook(
 	world: World<Entity>,
 	assets: GameAssets,
+	uiLayer: Container,
 	center: Vector2,
 ) {
 	const view = new AnimatedSprite({
@@ -88,13 +80,18 @@ export function spawnCook(
 	view.anchor.set(0.5);
 	view.scale.set(SPRITE_SCALE);
 
+	const badge = createCookBadge(COOK_NAME);
+	uiLayer.addChild(badge.root);
+
 	world.add({
-		name: "cook",
+		name: COOK_NAME,
 		position: { ...center },
 		velocity: { x: 0, y: 0 },
+		order: null,
 		carry: createCarryState(),
 		target: null,
 		view,
+		badge,
 		animated: true,
 		playerTag: true,
 	});
@@ -106,7 +103,7 @@ export function spawnField(ctx: GameContext): TilingSprite {
 
 	const floor = spawnFloor(ctx.layers.background, ctx.assets.floor, screen);
 	spawnStations(ctx.world, ctx.assets, screen);
-	spawnCook(ctx.world, ctx.assets, center);
+	spawnCook(ctx.world, ctx.assets, ctx.layers.ui, center);
 
 	return floor;
 }

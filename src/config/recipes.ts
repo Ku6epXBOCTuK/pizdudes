@@ -22,7 +22,7 @@ export const RECIPE_BURGER: Ingredient[] = ["bun", "veg", "patty", "bun"];
 
 export const RECIPES: Ingredient[][] = [RECIPE_BURGER];
 
-export interface AssemblyState {
+export interface OrderState {
 	target: Ingredient[];
 	placed: Ingredient[];
 }
@@ -36,7 +36,7 @@ export function pickRecipe(random: () => number = Math.random): Ingredient[] {
 	return [...RECIPES[Math.floor(random() * RECIPES.length)]!];
 }
 
-export function createAssembly(recipe = pickRecipe()): AssemblyState {
+export function createOrder(recipe = pickRecipe()): OrderState {
 	return { target: recipe, placed: [] };
 }
 
@@ -44,10 +44,10 @@ export function createCarryState(): CarryState {
 	return { item: null, cooldownMs: 0 };
 }
 
-export function nextNeeded(assembly: AssemblyState): Ingredient | undefined {
-	return assembly.target[assembly.placed.length];
+export function nextNeeded(order: OrderState): Ingredient | undefined {
+	return order.target[order.placed.length];
 }
 
-export function isAssemblyComplete(assembly: AssemblyState): boolean {
-	return assembly.placed.length >= assembly.target.length;
+export function isOrderComplete(order: OrderState): boolean {
+	return order.placed.length >= order.target.length;
 }

@@ -8,6 +8,7 @@ import { MAX_FRAME_MS } from "../constants";
 import type { Layers } from "../pixi";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
+import { createCookBadgeSystem } from "../systems/cook-badge";
 import { createMovementSystem } from "../systems/movement";
 import { createOrderAiSystem } from "../systems/order-ai";
 import { createOrderAssemblySystem } from "../systems/order-assembly";
@@ -40,6 +41,10 @@ const SYSTEM_GROUPS: SystemGroup[] = [
 	{
 		name: "render",
 		factories: [createRenderSystem],
+	},
+	{
+		name: "ui",
+		factories: [createCookBadgeSystem],
 	},
 ];
 
