@@ -10,8 +10,12 @@ import {
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import { FIELD_SLOTS } from "../config/field";
+import {
+	createAssembly,
+	createCarryState,
+	SERVING_COUNTER,
+} from "../config/recipes";
 import type { GameAssets, GameContext } from "../shared/context";
-import { patrolVertices } from "../systems/patrol";
 import type { Entity, Vector2 } from "./world";
 
 export interface Size {
@@ -55,12 +59,18 @@ export function spawnStations(
 		const view = new Sprite(assets.stations[slot.station]);
 		view.anchor.set(0.5);
 
-		world.add({
+		const station: Entity = {
 			position: { x: slot.x * screen.width, y: slot.y * screen.height },
 			view,
 			stationTag: true,
 			stationType: slot.station,
-		});
+		};
+
+		if (slot.station === SERVING_COUNTER) {
+			station.assembly = createAssembly();
+		}
+
+		world.add(station);
 	}
 }
 
@@ -80,9 +90,10 @@ export function spawnCook(
 
 	world.add({
 		name: "cook",
-		position: patrolVertices(center)[0]!,
+		position: { ...center },
 		velocity: { x: 0, y: 0 },
-		patrol: { nextVertex: 1 },
+		carry: createCarryState(),
+		target: null,
 		view,
 		animated: true,
 		playerTag: true,

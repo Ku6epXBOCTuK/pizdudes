@@ -9,7 +9,8 @@ import type { Layers } from "../pixi";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
 import { createMovementSystem } from "../systems/movement";
-import { createPatrolSystem } from "../systems/patrol";
+import { createOrderAiSystem } from "../systems/order-ai";
+import { createOrderAssemblySystem } from "../systems/order-assembly";
 import { createRenderSystem } from "../systems/render";
 import { GameEngine, GameEvents } from "./event-bus";
 import { spawnField } from "./spawn";
@@ -22,7 +23,11 @@ type SystemGroup = { name: string; factories: SystemFactory[] };
 const SYSTEM_GROUPS: SystemGroup[] = [
 	{
 		name: "ai",
-		factories: [createPatrolSystem],
+		factories: [createOrderAiSystem],
+	},
+	{
+		name: "order",
+		factories: [createOrderAssemblySystem],
 	},
 	{
 		name: "physics",
