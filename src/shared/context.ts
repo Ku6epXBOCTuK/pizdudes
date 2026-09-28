@@ -1,5 +1,5 @@
 import type { World } from "miniplex";
-import type { Application } from "pixi.js";
+import type { Application, Texture } from "pixi.js";
 import type { GameEngine } from "../core/event-bus";
 import type { Entity } from "../core/world";
 import type { Layers } from "../pixi";
@@ -9,7 +9,12 @@ export type BaseContext = {
 	eventBus: typeof GameEngine;
 };
 
+export type GameAssets = {
+	cookSheet: Texture;
+};
+
 export type GameContext = BaseContext & {
 	app: Application;
 	layers: Layers;
+	assets: GameAssets;
 };

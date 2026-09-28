@@ -1,21 +1,23 @@
 import { World } from "miniplex";
 import {
+	AnimatedSprite,
 	Assets,
-	Sprite,
 	type Application,
 	type Texture,
 	type Ticker,
 } from "pixi.js";
 
 import cookTextureUrl from "../../assets/characters/cook/cook.png";
-import { cookFrame, COOK_POSE } from "../assets/cook";
+import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { MAX_FRAME_MS, SPRITE_SCALE } from "../constants";
 import type { Layers } from "../pixi";
-import type { GameContext } from "../shared/context";
+import type { GameAssets, GameContext } from "../shared/context";
+import { createAnimationSystem } from "../systems/animation";
 import { createMovementSystem } from "../systems/movement";
+import { createPatrolSystem, patrolVertices } from "../systems/patrol";
 import { createRenderSystem } from "../systems/render";
 import { GameEngine, GameEvents } from "./event-bus";
-import type { Entity } from "./world";
+import type { Entity, Vector2 } from "./world";
 
 type System = ((dt: number) => void) & { dispose?: () => void };
 type SystemFactory = (ctx: GameContext) => System;
@@ -23,8 +25,16 @@ type SystemGroup = { name: string; factories: SystemFactory[] };
 
 const SYSTEM_GROUPS: SystemGroup[] = [
 	{
+		name: "ai",
+		factories: [createPatrolSystem],
+	},
+	{
 		name: "physics",
 		factories: [createMovementSystem],
+	},
+	{
+		name: "animation",
+		factories: [createAnimationSystem],
 	},
 	{
 		name: "render",
@@ -32,39 +42,46 @@ const SYSTEM_GROUPS: SystemGroup[] = [
 	},
 ];
 
-const INITIAL_SPAWN = {
-	position: { x: 160, y: 160 },
-	velocity: { x: 90, y: 45 },
-};
-
-async function loadInitialTextures() {
+async function loadInitialTextures(): Promise<GameAssets> {
 	return {
-		cook: await Assets.load<Texture>(cookTextureUrl),
+		cookSheet: await Assets.load<Texture>(cookTextureUrl),
 	};
 }
 
-function createInitialState(world: World<Entity>, cookSheet: Texture) {
-	const view = new Sprite(cookFrame(cookSheet, 0, COOK_POSE.walkRight));
+function createInitialState(
+	world: World<Entity>,
+	assets: GameAssets,
+	center: Vector2,
+) {
+	const view = new AnimatedSprite({
+		textures: cookWalkFrames(assets.cookSheet)["south-east"],
+		animationSpeed: COOK_WALK_FPS,
+		autoUpdate: false,
+		loop: true,
+	});
 	view.anchor.set(0.5);
 	view.scale.set(SPRITE_SCALE);
 
 	world.add({
 		name: "cook",
-		position: { ...INITIAL_SPAWN.position },
-		velocity: { ...INITIAL_SPAWN.velocity },
+		position: patrolVertices(center)[0]!,
+		velocity: { x: 0, y: 0 },
+		patrol: { nextVertex: 1 },
 		view,
+		animated: true,
 		playerTag: true,
 	});
 }
 
 export async function bootstrapGame(app: Application, layers: Layers) {
-	const textures = await loadInitialTextures();
+	const assets = await loadInitialTextures();
 
 	const world = new World<Entity>();
 	const ctx: GameContext = {
 		world,
 		app,
 		layers,
+		assets,
 		eventBus: GameEngine,
 	};
 
@@ -76,7 +93,8 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 	let isPaused = false;
 	let isDestroyed = false;
 
-	createInitialState(world, textures.cook);
+	const center = { x: app.screen.width / 2, y: app.screen.height / 2 };
+	createInitialState(world, assets, center);
 
 	const onPause = () => {
 		isPaused = true;
@@ -122,7 +140,8 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 
 		reset() {
 			world.clear();
-			createInitialState(world, textures.cook);
+			const center = { x: app.screen.width / 2, y: app.screen.height / 2 };
+			createInitialState(world, assets, center);
 			timeScale = 1;
 
 			if (isPaused) {

@@ -1,0 +1,109 @@
+{
+	"character": {
+		"id": "e76e2c83-825b-4bfb-892f-b4c89f42a455",
+		"name": "Idle",
+		"prompt": "A small, round cook character with a cheerful expression and wide, curious eyes. It wears a tall, puffy white chef's hat and a simple apron over a plump, yellow, pill-shaped body. The character stands in a confident, slightly bouncing pose with short arms held out to the sides, rendered with a crisp black outline.",
+		"size": {
+			"width": 64,
+			"height": 64
+		},
+		"directions": 8,
+		"view": "low top-down"
+	},
+	"spritesheet": {
+		"path": "cook.png",
+		"cell_size": {
+			"width": 84,
+			"height": 84
+		},
+		"sheet_size": {
+			"width": 672,
+			"height": 756
+		},
+		"columns": 8,
+		"pivot": "cell-center",
+		"rows": [
+			{
+				"row": 0,
+				"type": "rotations",
+				"frame_count": 8,
+				"directions": [
+					"south",
+					"south-east",
+					"east",
+					"north-east",
+					"north",
+					"north-west",
+					"west",
+					"south-west"
+				]
+			},
+			{
+				"row": 1,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "south"
+			},
+			{
+				"row": 2,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "south-east"
+			},
+			{
+				"row": 3,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "east"
+			},
+			{
+				"row": 4,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "north-east"
+			},
+			{
+				"row": 5,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "north"
+			},
+			{
+				"row": 6,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "north-west"
+			},
+			{
+				"row": 7,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "west"
+			},
+			{
+				"row": 8,
+				"type": "animation",
+				"frame_count": 8,
+				"animation": "Walking",
+				"animation_group_id": "09b5a3e7-aea8-430d-b299-9ee95f8aa953",
+				"direction": "south-west"
+			}
+		]
+	},
+	"export_version": "1.0",
+	"export_date": "2026-09-28T06:44:33.930300+00:00"
+}
