@@ -1,0 +1,11 @@
+html,
+body {
+	margin: 0;
+	height: 100%;
+	overflow: hidden;
+	background: #10131a;
+}
+
+#app {
+	height: 100%;
+}

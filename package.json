@@ -1,0 +1,23 @@
+{
+	"name": "pizdudes-test",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview",
+		"format": "prettier --write . --log-level=warn",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"miniplex": "^2.0.0",
+		"pixi.js": "^8.21.0",
+		"prettier": "^3.9.9"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2",
+		"vite": "^8.3.1"
+	},
+	"packageManager": "pnpm@12.4.1"
+}
