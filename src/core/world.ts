@@ -1,4 +1,5 @@
 import type { Sprite } from "pixi.js";
+import type { StationType } from "../assets/stations";
 
 export interface Vector2 {
 	x: number;
@@ -16,6 +17,8 @@ export type Entity = Partial<{
 	velocity: Vector2;
 	patrol: PatrolState;
 	view: Sprite;
+	stationTag: true;
+	stationType: StationType;
 	animated: true;
 	playerTag: true;
 }>;

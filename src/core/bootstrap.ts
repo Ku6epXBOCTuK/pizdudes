@@ -1,23 +1,18 @@
 import { World } from "miniplex";
-import {
-	AnimatedSprite,
-	Assets,
-	type Application,
-	type Texture,
-	type Ticker,
-} from "pixi.js";
+import { Assets, type Application, type Texture, type Ticker } from "pixi.js";
 
 import cookTextureUrl from "../../assets/characters/cook/cook.png";
-import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
-import { MAX_FRAME_MS, SPRITE_SCALE } from "../constants";
+import { loadStations } from "../assets/stations";
+import { MAX_FRAME_MS } from "../constants";
 import type { Layers } from "../pixi";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
 import { createMovementSystem } from "../systems/movement";
-import { createPatrolSystem, patrolVertices } from "../systems/patrol";
+import { createPatrolSystem } from "../systems/patrol";
 import { createRenderSystem } from "../systems/render";
 import { GameEngine, GameEvents } from "./event-bus";
-import type { Entity, Vector2 } from "./world";
+import { spawnField } from "./spawn";
+import type { Entity } from "./world";
 
 type System = ((dt: number) => void) & { dispose?: () => void };
 type SystemFactory = (ctx: GameContext) => System;
@@ -43,34 +38,12 @@ const SYSTEM_GROUPS: SystemGroup[] = [
 ];
 
 async function loadInitialTextures(): Promise<GameAssets> {
-	return {
-		cookSheet: await Assets.load<Texture>(cookTextureUrl),
-	};
-}
+	const [cookSheet, stations] = await Promise.all([
+		Assets.load<Texture>(cookTextureUrl),
+		loadStations(),
+	]);
 
-function createInitialState(
-	world: World<Entity>,
-	assets: GameAssets,
-	center: Vector2,
-) {
-	const view = new AnimatedSprite({
-		textures: cookWalkFrames(assets.cookSheet)["south-east"],
-		animationSpeed: COOK_WALK_FPS,
-		autoUpdate: false,
-		loop: true,
-	});
-	view.anchor.set(0.5);
-	view.scale.set(SPRITE_SCALE);
-
-	world.add({
-		name: "cook",
-		position: patrolVertices(center)[0]!,
-		velocity: { x: 0, y: 0 },
-		patrol: { nextVertex: 1 },
-		view,
-		animated: true,
-		playerTag: true,
-	});
+	return { cookSheet, stations };
 }
 
 export async function bootstrapGame(app: Application, layers: Layers) {
@@ -93,8 +66,7 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 	let isPaused = false;
 	let isDestroyed = false;
 
-	const center = { x: app.screen.width / 2, y: app.screen.height / 2 };
-	createInitialState(world, assets, center);
+	spawnField(world, assets, app.screen);
 
 	const onPause = () => {
 		isPaused = true;
@@ -140,8 +112,7 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 
 		reset() {
 			world.clear();
-			const center = { x: app.screen.width / 2, y: app.screen.height / 2 };
-			createInitialState(world, assets, center);
+			spawnField(world, assets, app.screen);
 			timeScale = 1;
 
 			if (isPaused) {
