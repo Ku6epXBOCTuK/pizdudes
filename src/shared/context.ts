@@ -1,5 +1,6 @@
 import type { World } from "miniplex";
 import type { Application, Texture } from "pixi.js";
+
 import type { StationTextures } from "../assets/stations";
 import type { GameEngine } from "../core/event-bus";
 import type { Entity } from "../core/world";
@@ -12,6 +13,7 @@ export type BaseContext = {
 
 export type GameAssets = {
 	cookSheet: Texture;
+	floor: Texture;
 	stations: StationTextures;
 };
 

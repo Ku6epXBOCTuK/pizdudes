@@ -1,16 +1,49 @@
 import type { World } from "miniplex";
-import { AnimatedSprite, Sprite } from "pixi.js";
+import {
+	AnimatedSprite,
+	type Container,
+	Sprite,
+	type Texture,
+	TilingSprite,
+} from "pixi.js";
 
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
-import { SPRITE_SCALE } from "../constants";
+import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import { FIELD_SLOTS } from "../config/field";
-import type { GameAssets } from "../shared/context";
+import type { GameAssets, GameContext } from "../shared/context";
 import { patrolVertices } from "../systems/patrol";
 import type { Entity, Vector2 } from "./world";
 
 export interface Size {
 	width: number;
 	height: number;
+}
+
+const FLOOR_LABEL = "floor";
+
+export function spawnFloor(
+	layer: Container,
+	floor: Texture,
+	screen: Size,
+): TilingSprite {
+	const previous = layer.children.find((child) => child.label === FLOOR_LABEL);
+
+	if (previous) {
+		layer.removeChild(previous);
+		previous.destroy();
+	}
+
+	const view = new TilingSprite({
+		texture: floor,
+		width: screen.width,
+		height: screen.height,
+	});
+	view.tileScale.set(FLOOR_TILE_SCALE);
+	view.tint = FLOOR_TINT;
+	view.label = FLOOR_LABEL;
+
+	layer.addChild(view);
+	return view;
 }
 
 export function spawnStations(
@@ -56,11 +89,13 @@ export function spawnCook(
 	});
 }
 
-export function spawnField(
-	world: World<Entity>,
-	assets: GameAssets,
-	screen: Size,
-) {
-	spawnStations(world, assets, screen);
-	spawnCook(world, assets, { x: screen.width / 2, y: screen.height / 2 });
+export function spawnField(ctx: GameContext): TilingSprite {
+	const screen = ctx.app.screen;
+	const center = { x: screen.width / 2, y: screen.height / 2 };
+
+	const floor = spawnFloor(ctx.layers.background, ctx.assets.floor, screen);
+	spawnStations(ctx.world, ctx.assets, screen);
+	spawnCook(ctx.world, ctx.assets, center);
+
+	return floor;
 }
