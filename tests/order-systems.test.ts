@@ -1,7 +1,7 @@
 import { World } from "miniplex";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { FIELD_SLOTS } from "../src/config/field";
+import { approachPoint, FIELD_SLOTS, slotPosition } from "../src/config/field";
 import {
 	createCarryState,
 	createOrder,
@@ -25,14 +25,15 @@ const FRAME = 1000 / 60;
 function stationPositions() {
 	return FIELD_SLOTS.map((slot) => ({
 		stationType: slot.station,
-		position: { x: slot.x * SCREEN.width, y: slot.y * SCREEN.height },
+		position: slotPosition(slot, SCREEN),
+		approach: approachPoint(slot, SCREEN),
 	}));
 }
 
 function stationAt(type: string) {
 	const found = stationPositions().find((s) => s.stationType === type);
 	if (!found) throw new Error(`нет станции ${type}`);
-	return found.position;
+	return found.approach;
 }
 
 interface Harness {
@@ -70,6 +71,7 @@ function harness(cooks: Entity[]): Harness {
 	for (const slot of stationPositions()) {
 		world.add({
 			position: { ...slot.position },
+			approach: { ...slot.approach },
 			stationTag: true,
 			stationType: slot.stationType,
 		});
@@ -487,25 +489,45 @@ describe("устойчивость", () => {
 		const cook = makeCook({ name: "house" });
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
-		let closest = Infinity;
+		const counter = stationAt("serving-counter");
 
-		for (let i = 0; i < 60 * 30; i++) {
+		for (let i = 0; i < 60 * 30 && !c.order; i++) {
 			h.tick();
-			const counter = stationAt("serving-counter");
-			closest = Math.min(
-				closest,
-				Math.hypot(
-					(c.position?.x ?? 0) - counter.x,
-					(c.position?.y ?? 0) - counter.y,
-				),
-			);
-			if (c.order) break;
 		}
 
 		expect(c.order).not.toBeNull();
-		// радиус прибытия плюс шаг за кадр
-		expect(closest).toBeLessThanOrEqual(
-			AI_ARRIVE_DISTANCE + (AGENT_SPEED * FRAME) / 1000,
+		expect(
+			Math.hypot(
+				(c.position?.x ?? 0) - counter.x,
+				(c.position?.y ?? 0) - counter.y,
+			),
+		).toBeLessThanOrEqual(AI_ARRIVE_DISTANCE + (AGENT_SPEED * FRAME) / 1000);
+	});
+
+	it("повар стоит вплотную к точке подхода, а не где-то рядом", () => {
+		const cook = makeCook({ name: "house" });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+		const counter = stationAt("serving-counter");
+
+		// момент получения заказа — повар как раз стоит у точки подхода
+		let atArrival: Vector2 | null = null;
+		for (let i = 0; i < 60 * 30; i++) {
+			h.tick();
+			if (c.order && !atArrival) {
+				atArrival = { ...c.position! };
+				break;
+			}
+		}
+
+		expect(atArrival).not.toBeNull();
+
+		const distance = Math.hypot(
+			atArrival!.x - counter.x,
+			atArrival!.y - counter.y,
 		);
+
+		// стоит у самой точки подхода, а не в радиусе прибытия от неё
+		expect(distance).toBeLessThanOrEqual(AI_ARRIVE_DISTANCE + 1);
 	});
 });

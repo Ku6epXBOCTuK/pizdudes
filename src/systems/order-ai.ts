@@ -119,8 +119,8 @@ export function createOrderAiSystem({ app, world }: GameContext) {
 
 			if (type && station) {
 				cook.wander = null;
-				cook.target = { type, position: { ...station.position } };
-				moveToward(cook, station.position);
+				cook.target = { type, position: { ...station.approach } };
+				moveToward(cook, station.approach);
 				continue;
 			}
 

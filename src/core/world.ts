@@ -35,6 +35,7 @@ export type Entity = Partial<{
 	badge: CookBadge;
 	stationTag: true;
 	stationType: StationType;
+	approach: Vector2;
 	animated: true;
 	playerTag: true;
 }>;

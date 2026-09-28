@@ -9,6 +9,7 @@ import {
 	SPAWN_AREA,
 	WANDER_AREA,
 } from "../src/config/field";
+import { COOK_HALF_SIZE, STATION_HALF_SIZE } from "../src/constants";
 import { INGREDIENT_STATIONS, RECIPE_BURGER } from "../src/config/recipes";
 
 const SCREENS = [
@@ -19,8 +20,8 @@ const SCREENS = [
 	{ width: 800, height: 600 },
 ];
 
-const STATION_HALF = 64;
-const COOK_HALF = 42;
+const STATION_HALF = STATION_HALF_SIZE;
+const COOK_HALF = COOK_HALF_SIZE;
 
 function inArea(
 	point: { x: number; y: number },

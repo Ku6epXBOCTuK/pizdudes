@@ -10,7 +10,11 @@ export const FLOOR_TINT = 0x6a6e78;
 
 export const AGENT_SPEED = 120;
 
-export const AI_ARRIVE_DISTANCE = 70;
+export const AI_ARRIVE_DISTANCE = 10;
+
+export const STATION_HALF_SIZE = 54;
+
+export const COOK_HALF_SIZE = 32;
 
 export const AI_ACTION_COOLDOWN_MS = 400;
 

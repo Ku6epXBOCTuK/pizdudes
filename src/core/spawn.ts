@@ -8,7 +8,7 @@ import {
 } from "pixi.js";
 import { COOK_WALK_FPS, cookWalkFrames } from "../assets/cook";
 import { type ControlMode, createControlState } from "../config/control";
-import { FIELD_SLOTS } from "../config/field";
+import { approachPoint, FIELD_SLOTS, slotPosition } from "../config/field";
 import { createCarryState } from "../config/recipes";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import type { GameAssets, GameContext } from "../shared/context";
@@ -59,10 +59,11 @@ export function spawnStations(
 		view.anchor.set(0.5);
 
 		world.add({
-			position: { x: slot.x * screen.width, y: slot.y * screen.height },
+			position: slotPosition(slot, screen),
 			view,
 			stationTag: true,
 			stationType: slot.station,
+			approach: approachPoint(slot, screen),
 		});
 	}
 }

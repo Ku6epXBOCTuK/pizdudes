@@ -1,10 +1,14 @@
 import type { StationType } from "../assets/stations";
+import { COOK_HALF_SIZE, STATION_HALF_SIZE } from "../constants";
 import type { Vector2 } from "../core/world";
+
+export type ApproachSide = "left" | "right" | "top" | "bottom";
 
 export interface FieldSlot {
 	station: StationType;
 	x: number;
 	y: number;
+	approach: ApproachSide;
 }
 
 export interface FieldArea {
@@ -29,15 +33,41 @@ export const WANDER_AREA: FieldArea = {
 };
 
 export const FIELD_SLOTS: FieldSlot[] = [
-	{ station: "bun-shelf", x: 0.12, y: 0.12 },
-	{ station: "patty-grill", x: 0.12, y: 0.37 },
-	{ station: "cheese-shelf", x: 0.12, y: 0.62 },
-	{ station: "veggie-shelf", x: 0.12, y: 0.87 },
-	{ station: "cash-register", x: 0.88, y: 0.12 },
-	{ station: "serving-counter", x: 0.88, y: 0.37 },
-	{ station: "sauce-dispenser", x: 0.88, y: 0.62 },
-	{ station: "trash-can", x: 0.88, y: 0.87 },
+	{ station: "bun-shelf", x: 0.12, y: 0.12, approach: "right" },
+	{ station: "patty-grill", x: 0.12, y: 0.37, approach: "right" },
+	{ station: "cheese-shelf", x: 0.12, y: 0.62, approach: "right" },
+	{ station: "veggie-shelf", x: 0.12, y: 0.87, approach: "right" },
+	{ station: "cash-register", x: 0.88, y: 0.12, approach: "left" },
+	{ station: "serving-counter", x: 0.88, y: 0.37, approach: "left" },
+	{ station: "sauce-dispenser", x: 0.88, y: 0.62, approach: "left" },
+	{ station: "trash-can", x: 0.88, y: 0.87, approach: "left" },
 ];
+
+export function slotPosition(
+	slot: FieldSlot,
+	screen: { width: number; height: number },
+): Vector2 {
+	return { x: slot.x * screen.width, y: slot.y * screen.height };
+}
+
+export function approachPoint(
+	slot: FieldSlot,
+	screen: { width: number; height: number },
+): Vector2 {
+	const station = slotPosition(slot, screen);
+	const offset = STATION_HALF_SIZE + COOK_HALF_SIZE;
+
+	switch (slot.approach) {
+		case "left":
+			return { x: station.x - offset, y: station.y };
+		case "right":
+			return { x: station.x + offset, y: station.y };
+		case "top":
+			return { x: station.x, y: station.y - offset };
+		case "bottom":
+			return { x: station.x, y: station.y + offset };
+	}
+}
 
 export function randomPointIn(
 	area: FieldArea,

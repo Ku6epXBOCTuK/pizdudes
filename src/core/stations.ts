@@ -3,7 +3,12 @@ import type { StationType } from "../assets/stations";
 import type { Entity } from "./world";
 
 export function stationFinder(world: World<Entity>) {
-	const stations = world.with("position", "stationTag", "stationType");
+	const stations = world.with(
+		"position",
+		"stationTag",
+		"stationType",
+		"approach",
+	);
 
 	return {
 		byType(type: StationType) {
