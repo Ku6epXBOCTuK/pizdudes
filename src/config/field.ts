@@ -6,6 +6,20 @@ export interface FieldSlot {
 	y: number;
 }
 
+export interface FieldArea {
+	xMin: number;
+	xMax: number;
+	yMin: number;
+	yMax: number;
+}
+
+export const SPAWN_AREA: FieldArea = {
+	xMin: 0.34,
+	xMax: 0.66,
+	yMin: 0.2,
+	yMax: 0.8,
+};
+
 export const FIELD_SLOTS: FieldSlot[] = [
 	{ station: "bun-shelf", x: 0.12, y: 0.12 },
 	{ station: "patty-grill", x: 0.12, y: 0.37 },

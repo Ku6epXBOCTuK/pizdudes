@@ -21,18 +21,17 @@ const twitch = readTwitchConfig();
 
 if (!twitch) {
 	console.info(
-		"[twitch] нет credentials в .env, чат не подключён, повар играет сам",
+		"[twitch] нет VITE_TWITCH_CHANNEL в .env, чат не подключён, повар играет сам",
 	);
 } else {
-	const chat = createTwitchChat(twitch, (request, author) => {
-		GameEngine.emit(GameEvents.CHAT_REQUEST, request);
-		console.info(`[twitch] ${author}:`, request);
+	const chat = createTwitchChat(twitch, (command) => {
+		GameEngine.emit(GameEvents.CHAT_REQUEST, command);
+		console.info(`[twitch] ${command.cook.name}:`, command.request);
 	});
 
 	chat.onConnect(() => {
-		game.setControlMode("chat");
 		console.info(
-			`[twitch] подключён к #${twitch.channel}, повар под управлением чата`,
+			`[twitch] подключён к #${twitch.channel}, каждый чаттер получает своего повара`,
 		);
 	});
 

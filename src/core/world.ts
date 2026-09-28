@@ -1,3 +1,4 @@
+import type { With } from "miniplex";
 import type { Sprite } from "pixi.js";
 import type { StationType } from "../assets/stations";
 import type { ControlState } from "../config/control";
@@ -14,9 +15,15 @@ export interface TargetState {
 	position: Vector2;
 }
 
+export interface CookIdentity {
+	userId: string;
+	name: string;
+}
+
 export type Entity = Partial<{
 	id: string;
 	name: string;
+	cookId: string;
 	position: Vector2;
 	velocity: Vector2;
 	order: OrderState | null;
@@ -30,3 +37,8 @@ export type Entity = Partial<{
 	animated: true;
 	playerTag: true;
 }>;
+
+export type CookEntity = With<
+	Entity,
+	"name" | "cookId" | "order" | "carry" | "control"
+>;

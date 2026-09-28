@@ -1,6 +1,7 @@
 import { ChatClient } from "@twurple/chat";
 
 import type { CookRequest } from "../config/control";
+import type { CookIdentity } from "../core/world";
 import { parseCommand } from "./commands";
 import type { TwitchConfig } from "./config";
 
@@ -11,9 +12,14 @@ export interface TwitchChat {
 	onError(callback: (error: Error) => void): void;
 }
 
+export interface TwitchCommand {
+	cook: CookIdentity;
+	request: CookRequest;
+}
+
 export function createTwitchChat(
 	config: TwitchConfig,
-	onRequest: (request: CookRequest, author: string) => void,
+	onRequest: (command: TwitchCommand) => void,
 ): TwitchChat {
 	const client = new ChatClient({
 		channels: [config.channel],
@@ -50,7 +56,7 @@ export function createTwitchChat(
 		report(new Error(`could not join #${channel}: ${reason}`));
 	});
 
-	client.onMessage((_channel, author, text) => {
+	client.onMessage((_channel, author, text, message) => {
 		const request = parseCommand(text);
 
 		if (!request) {
@@ -58,7 +64,13 @@ export function createTwitchChat(
 			return;
 		}
 
-		onRequest(request, author);
+		onRequest({
+			cook: {
+				userId: message.userInfo.userId,
+				name: message.userInfo.displayName,
+			},
+			request,
+		});
 	});
 
 	return {

@@ -1,4 +1,10 @@
 import type { CookRequest } from "../config/control";
+import type { CookIdentity } from "./world";
+
+export interface ChatRequestEvent {
+	cook: CookIdentity;
+	request: CookRequest;
+}
 
 const START_GAME = Symbol("start-game");
 const PAUSE_GAME = Symbol("pause-game");
@@ -30,7 +36,7 @@ type EventDataMap = {
 	[RESUME_GAME]: undefined;
 	[GAME_OVER]: undefined;
 	[TO_MENU]: undefined;
-	[CHAT_REQUEST]: CookRequest;
+	[CHAT_REQUEST]: ChatRequestEvent;
 };
 
 type EventCallback = (...args: unknown[]) => void;

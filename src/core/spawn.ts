@@ -8,12 +8,12 @@ import {
 } from "pixi.js";
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
-import { FIELD_SLOTS } from "../config/field";
-import { createControlState } from "../config/control";
+import { FIELD_SLOTS, SPAWN_AREA } from "../config/field";
+import { createControlState, type ControlMode } from "../config/control";
 import { createCarryState } from "../config/recipes";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createCookBadge } from "../ui/cook-badge";
-import type { Entity, Vector2 } from "./world";
+import type { CookEntity, CookIdentity, Entity, Vector2 } from "./world";
 
 export interface Size {
 	width: number;
@@ -21,7 +21,8 @@ export interface Size {
 }
 
 const FLOOR_LABEL = "floor";
-const COOK_NAME = "Повар";
+const HOUSE_COOK_ID = "house";
+const HOUSE_COOK_NAME = "Повар";
 
 export function spawnFloor(
 	layer: Container,
@@ -66,12 +67,28 @@ export function spawnStations(
 	}
 }
 
+export function randomSpawnPoint(
+	screen: Size,
+	random: () => number = Math.random,
+): Vector2 {
+	return {
+		x:
+			screen.width *
+			(SPAWN_AREA.xMin + random() * (SPAWN_AREA.xMax - SPAWN_AREA.xMin)),
+		y:
+			screen.height *
+			(SPAWN_AREA.yMin + random() * (SPAWN_AREA.yMax - SPAWN_AREA.yMin)),
+	};
+}
+
 export function spawnCook(
 	world: World<Entity>,
 	assets: GameAssets,
 	uiLayer: Container,
-	center: Vector2,
-) {
+	identity: CookIdentity,
+	position: Vector2,
+	mode: ControlMode = "auto",
+): CookEntity {
 	const view = new AnimatedSprite({
 		textures: cookWalkFrames(assets.cookSheet)["south-east"],
 		animationSpeed: COOK_WALK_FPS,
@@ -81,22 +98,25 @@ export function spawnCook(
 	view.anchor.set(0.5);
 	view.scale.set(SPRITE_SCALE);
 
-	const badge = createCookBadge(COOK_NAME);
+	const badge = createCookBadge(identity.name);
 	uiLayer.addChild(badge.root);
 
-	world.add({
-		name: COOK_NAME,
-		position: { ...center },
+	const cook = {
+		name: identity.name,
+		cookId: identity.userId,
+		position: { ...position },
 		velocity: { x: 0, y: 0 },
 		order: null,
 		carry: createCarryState(),
-		control: createControlState(),
+		control: createControlState(mode),
 		target: null,
 		view,
 		badge,
 		animated: true,
 		playerTag: true,
-	});
+	} satisfies Entity;
+
+	return world.add(cook);
 }
 
 export function spawnField(ctx: GameContext): TilingSprite {
@@ -105,7 +125,13 @@ export function spawnField(ctx: GameContext): TilingSprite {
 
 	const floor = spawnFloor(ctx.layers.background, ctx.assets.floor, screen);
 	spawnStations(ctx.world, ctx.assets, screen);
-	spawnCook(ctx.world, ctx.assets, ctx.layers.ui, center);
+	spawnCook(
+		ctx.world,
+		ctx.assets,
+		ctx.layers.ui,
+		{ userId: HOUSE_COOK_ID, name: HOUSE_COOK_NAME },
+		center,
+	);
 
 	return floor;
 }

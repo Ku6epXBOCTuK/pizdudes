@@ -1,24 +1,54 @@
-import { canRequest, type CookRequest } from "../config/control";
+import { canRequest } from "../config/control";
+import type { ChatRequestEvent } from "../core/event-bus";
 import { GameEngine, GameEvents } from "../core/event-bus";
+import { randomSpawnPoint, spawnCook } from "../core/spawn";
+import type { CookEntity, CookIdentity } from "../core/world";
 import type { GameContext } from "../shared/context";
 
-export function createCookCommandsSystem({ world }: GameContext) {
-	const cooks = world.with("position", "carry", "order", "control");
+export function createCookCommandsSystem(ctx: GameContext) {
+	const byCookId = ctx.world.with(
+		"name",
+		"cookId",
+		"order",
+		"carry",
+		"control",
+	);
 
-	const onRequest = (request: CookRequest) => {
-		for (const cook of cooks) {
-			if (cook.control.mode !== "chat") {
-				continue;
-			}
-
-			if (canRequest(request, cook)) {
-				cook.control.request = request;
-				return;
+	function ensureCook(identity: CookIdentity): CookEntity | undefined {
+		for (const cook of byCookId) {
+			if (cook.cookId === identity.userId) {
+				return cook;
 			}
 		}
 
-		console.info("[chat] request ignored:", request);
-	};
+		const cook = spawnCook(
+			ctx.world,
+			ctx.assets,
+			ctx.layers.ui,
+			identity,
+			randomSpawnPoint(ctx.app.screen),
+			"chat",
+		);
+
+		console.info(`[cook] spawned for ${identity.name} (${identity.userId})`);
+
+		return cook;
+	}
+
+	function onRequest({ cook, request }: ChatRequestEvent) {
+		const target = ensureCook(cook);
+
+		if (!target) {
+			return;
+		}
+
+		if (canRequest(request, target)) {
+			target.control.request = request;
+			return;
+		}
+
+		console.info(`[cook] ${cook.name} cannot do that yet:`, request);
+	}
 
 	GameEngine.on(GameEvents.CHAT_REQUEST, onRequest);
 
