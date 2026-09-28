@@ -1,4 +1,5 @@
 import type { StationType } from "../assets/stations";
+import type { Vector2 } from "../core/world";
 
 export interface FieldSlot {
 	station: StationType;
@@ -37,3 +38,28 @@ export const FIELD_SLOTS: FieldSlot[] = [
 	{ station: "sauce-dispenser", x: 0.88, y: 0.62 },
 	{ station: "trash-can", x: 0.88, y: 0.87 },
 ];
+
+export function randomPointIn(
+	area: FieldArea,
+	screen: { width: number; height: number },
+	random: () => number = Math.random,
+): Vector2 {
+	return {
+		x: screen.width * (area.xMin + random() * (area.xMax - area.xMin)),
+		y: screen.height * (area.yMin + random() * (area.yMax - area.yMin)),
+	};
+}
+
+export function randomSpawnPoint(
+	screen: { width: number; height: number },
+	random: () => number = Math.random,
+): Vector2 {
+	return randomPointIn(SPAWN_AREA, screen, random);
+}
+
+export function randomWanderPoint(
+	screen: { width: number; height: number },
+	random: () => number = Math.random,
+): Vector2 {
+	return randomPointIn(WANDER_AREA, screen, random);
+}

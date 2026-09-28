@@ -54,8 +54,16 @@ export function pickRecipe(random: () => number = Math.random): Ingredient[] {
 	return [...RECIPES[Math.floor(random() * RECIPES.length)]!];
 }
 
+export function isValidRecipe(recipe: readonly Ingredient[]): boolean {
+	return recipe.every((item) => INGREDIENTS.includes(item));
+}
+
 export function createOrder(recipe = pickRecipe()): OrderState {
-	return { target: recipe, placed: [] };
+	if (!isValidRecipe(recipe)) {
+		throw new Error(`Неизвестный ингредиент в рецепте: ${recipe.join(", ")}`);
+	}
+
+	return { target: [...recipe], placed: [] };
 }
 
 export function createCarryState(): CarryState {

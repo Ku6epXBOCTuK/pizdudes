@@ -1,7 +1,7 @@
 import type { With } from "miniplex";
 import type { StationType } from "../assets/stations";
 import { moveToward } from "../core/navigation";
-import { randomWanderPoint } from "../core/spawn";
+import { randomWanderPoint } from "../config/field";
 import { stationFinder } from "../core/stations";
 import type { Entity, Vector2 } from "../core/world";
 import { CHAT_IDLE_WANDER_MS, WANDER_SPEED } from "../constants";

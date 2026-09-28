@@ -1,5 +1,6 @@
 import {
 	type CarryState,
+	type Ingredient,
 	isOrderComplete,
 	nextNeeded,
 	type OrderState,
@@ -12,7 +13,7 @@ export type CookRequest =
 	| { kind: "fetch"; ingredient: CookRequestIngredient }
 	| { kind: "deliver" };
 
-export type CookRequestIngredient = NonNullable<ReturnType<typeof nextNeeded>>;
+export type CookRequestIngredient = Ingredient;
 
 export interface ControlState {
 	mode: ControlMode;

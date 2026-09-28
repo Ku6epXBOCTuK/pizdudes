@@ -1,7 +1,8 @@
 import { canRequest, markActive } from "../config/control";
 import type { ChatRequestEvent } from "../core/event-bus";
 import { GameEngine, GameEvents } from "../core/event-bus";
-import { randomSpawnPoint, spawnCook } from "../core/spawn";
+import { randomSpawnPoint } from "../config/field";
+import { spawnCook } from "../core/spawn";
 import type { CookEntity, CookIdentity } from "../core/world";
 import type { GameContext } from "../shared/context";
 
