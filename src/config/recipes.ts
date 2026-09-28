@@ -1,6 +1,13 @@
 import type { StationType } from "../assets/stations";
 
-export const INGREDIENTS = ["bun", "veg", "patty"] as const;
+export const INGREDIENTS = [
+	"bun",
+	"sauce",
+	"patty",
+	"cheese",
+	"salad",
+	"tomato",
+] as const;
 
 export type Ingredient = (typeof INGREDIENTS)[number];
 
@@ -10,15 +17,26 @@ export type Item = Ingredient | typeof ITEM_BURGER;
 
 export const INGREDIENT_STATIONS: Record<Ingredient, StationType> = {
 	bun: "bun-shelf",
-	veg: "veggie-shelf",
+	sauce: "sauce-dispenser",
 	patty: "patty-grill",
+	cheese: "cheese-shelf",
+	salad: "veggie-shelf",
+	tomato: "veggie-shelf",
 };
 
 export const SERVING_COUNTER = "serving-counter";
 
 export const CASH_REGISTER = "cash-register";
 
-export const RECIPE_BURGER: Ingredient[] = ["bun", "veg", "patty", "bun"];
+export const RECIPE_BURGER: Ingredient[] = [
+	"bun",
+	"sauce",
+	"patty",
+	"cheese",
+	"salad",
+	"tomato",
+	"bun",
+];
 
 export const RECIPES: Ingredient[][] = [RECIPE_BURGER];
 
