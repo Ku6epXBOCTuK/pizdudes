@@ -8,7 +8,12 @@ import {
 } from "pixi.js";
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
-import { FIELD_SLOTS, SPAWN_AREA } from "../config/field";
+import {
+	type FieldArea,
+	FIELD_SLOTS,
+	SPAWN_AREA,
+	WANDER_AREA,
+} from "../config/field";
 import { createControlState, type ControlMode } from "../config/control";
 import { createCarryState } from "../config/recipes";
 import type { GameAssets, GameContext } from "../shared/context";
@@ -67,18 +72,29 @@ export function spawnStations(
 	}
 }
 
+function randomPointIn(
+	area: FieldArea,
+	screen: Size,
+	random: () => number,
+): Vector2 {
+	return {
+		x: screen.width * (area.xMin + random() * (area.xMax - area.xMin)),
+		y: screen.height * (area.yMin + random() * (area.yMax - area.yMin)),
+	};
+}
+
 export function randomSpawnPoint(
 	screen: Size,
 	random: () => number = Math.random,
 ): Vector2 {
-	return {
-		x:
-			screen.width *
-			(SPAWN_AREA.xMin + random() * (SPAWN_AREA.xMax - SPAWN_AREA.xMin)),
-		y:
-			screen.height *
-			(SPAWN_AREA.yMin + random() * (SPAWN_AREA.yMax - SPAWN_AREA.yMin)),
-	};
+	return randomPointIn(SPAWN_AREA, screen, random);
+}
+
+export function randomWanderPoint(
+	screen: Size,
+	random: () => number = Math.random,
+): Vector2 {
+	return randomPointIn(WANDER_AREA, screen, random);
 }
 
 export function spawnCook(
@@ -110,6 +126,7 @@ export function spawnCook(
 		carry: createCarryState(),
 		control: createControlState(mode),
 		target: null,
+		wander: null,
 		view,
 		badge,
 		animated: true,

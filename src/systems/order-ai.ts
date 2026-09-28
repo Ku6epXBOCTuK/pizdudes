@@ -1,7 +1,15 @@
+import type { With } from "miniplex";
 import type { StationType } from "../assets/stations";
 import { moveToward } from "../core/navigation";
+import { randomWanderPoint } from "../core/spawn";
 import { stationFinder } from "../core/stations";
-import { type ControlState, isRequestSettled } from "../config/control";
+import type { Entity, Vector2 } from "../core/world";
+import { CHAT_IDLE_WANDER_MS, WANDER_SPEED } from "../constants";
+import {
+	type ControlState,
+	isRequestSettled,
+	markActive,
+} from "../config/control";
 import {
 	CASH_REGISTER,
 	INGREDIENT_STATIONS,
@@ -13,6 +21,13 @@ import {
 	SERVING_COUNTER,
 } from "../config/recipes";
 import type { GameContext } from "../shared/context";
+
+const WANDER_ARRIVE_DISTANCE = 24;
+
+type Cook = With<
+	Entity,
+	"position" | "velocity" | "carry" | "order" | "target" | "control" | "wander"
+>;
 
 function requestedType(
 	item: Item | null,
@@ -56,7 +71,23 @@ function nextTargetType(
 	return needed ? INGREDIENT_STATIONS[needed] : undefined;
 }
 
-export function createOrderAiSystem({ world }: GameContext) {
+function walkTo(cook: Cook, point: Vector2) {
+	const dx = point.x - cook.position.x;
+	const dy = point.y - cook.position.y;
+	const distance = Math.hypot(dx, dy);
+
+	if (distance <= WANDER_ARRIVE_DISTANCE) {
+		cook.velocity.x = 0;
+		cook.velocity.y = 0;
+		return true;
+	}
+
+	cook.velocity.x = (dx / distance) * WANDER_SPEED;
+	cook.velocity.y = (dy / distance) * WANDER_SPEED;
+	return false;
+}
+
+export function createOrderAiSystem({ app, world }: GameContext) {
 	const cooks = world.with(
 		"position",
 		"velocity",
@@ -64,30 +95,51 @@ export function createOrderAiSystem({ world }: GameContext) {
 		"order",
 		"target",
 		"control",
+		"wander",
 	);
 	const stations = stationFinder(world);
 
-	return () => {
+	return (dt: number) => {
 		for (const cook of cooks) {
-			if (
-				cook.control.request &&
-				isRequestSettled(cook.control.request, cook)
-			) {
-				cook.control.request = null;
+			const control = cook.control;
+
+			if (control.request && isRequestSettled(control.request, cook)) {
+				control.request = null;
 			}
 
-			const type = nextTargetType(cook.carry.item, cook.order, cook.control);
+			if (control.request) {
+				markActive(control);
+				cook.wander = null;
+			} else if (control.idleMs < CHAT_IDLE_WANDER_MS) {
+				control.idleMs += dt;
+			}
+
+			const type = nextTargetType(cook.carry.item, cook.order, control);
 			const station = type ? stations.byType(type) : undefined;
 
-			if (!type || !station) {
-				cook.target = null;
+			if (type && station) {
+				cook.wander = null;
+				cook.target = { type, position: { ...station.position } };
+				moveToward(cook, station.position);
+				continue;
+			}
+
+			cook.target = null;
+
+			if (control.mode !== "chat" || control.idleMs < CHAT_IDLE_WANDER_MS) {
 				cook.velocity.x = 0;
 				cook.velocity.y = 0;
 				continue;
 			}
 
-			cook.target = { type, position: { ...station.position } };
-			moveToward(cook, station.position);
+			if (!cook.wander) {
+				cook.wander = randomWanderPoint(app.screen);
+			}
+
+			if (walkTo(cook, cook.wander)) {
+				cook.wander = null;
+				control.idleMs = 0;
+			}
 		}
 	};
 }

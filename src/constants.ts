@@ -13,3 +13,7 @@ export const AGENT_SPEED = 120;
 export const AI_ARRIVE_DISTANCE = 70;
 
 export const AI_ACTION_COOLDOWN_MS = 400;
+
+export const CHAT_IDLE_WANDER_MS = 12000;
+
+export const WANDER_SPEED = 85;

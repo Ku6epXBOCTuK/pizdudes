@@ -17,6 +17,7 @@ export type CookRequestIngredient = NonNullable<ReturnType<typeof nextNeeded>>;
 export interface ControlState {
 	mode: ControlMode;
 	request: CookRequest | null;
+	idleMs: number;
 }
 
 export interface CookProgress {
@@ -25,7 +26,11 @@ export interface CookProgress {
 }
 
 export function createControlState(mode: ControlMode = "auto"): ControlState {
-	return { mode, request: null };
+	return { mode, request: null, idleMs: 0 };
+}
+
+export function markActive(control: ControlState) {
+	control.idleMs = 0;
 }
 
 export function canRequest(request: CookRequest, cook: CookProgress): boolean {

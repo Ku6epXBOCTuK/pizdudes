@@ -1,4 +1,4 @@
-import { canRequest } from "../config/control";
+import { canRequest, markActive } from "../config/control";
 import type { ChatRequestEvent } from "../core/event-bus";
 import { GameEngine, GameEvents } from "../core/event-bus";
 import { randomSpawnPoint, spawnCook } from "../core/spawn";
@@ -12,6 +12,7 @@ export function createCookCommandsSystem(ctx: GameContext) {
 		"order",
 		"carry",
 		"control",
+		"wander",
 	);
 
 	function ensureCook(identity: CookIdentity): CookEntity | undefined {
@@ -44,6 +45,8 @@ export function createCookCommandsSystem(ctx: GameContext) {
 
 		if (canRequest(request, target)) {
 			target.control.request = request;
+			markActive(target.control);
+			target.wander = null;
 			return;
 		}
 

@@ -30,6 +30,7 @@ export type Entity = Partial<{
 	carry: CarryState;
 	control: ControlState;
 	target: TargetState | null;
+	wander: Vector2 | null;
 	view: Sprite;
 	badge: CookBadge;
 	stationTag: true;
@@ -40,5 +41,5 @@ export type Entity = Partial<{
 
 export type CookEntity = With<
 	Entity,
-	"name" | "cookId" | "order" | "carry" | "control"
+	"name" | "cookId" | "order" | "carry" | "control" | "wander"
 >;
