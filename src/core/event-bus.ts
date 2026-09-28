@@ -3,7 +3,7 @@ import type { CookIdentity } from "./world";
 
 export interface ChatRequestEvent {
 	cook: CookIdentity;
-	request: CookRequest;
+	request?: CookRequest | null;
 }
 
 const START_GAME = Symbol("start-game");
@@ -12,6 +12,7 @@ const RESUME_GAME = Symbol("resume-game");
 const GAME_OVER = Symbol("game-over");
 const TO_MENU = Symbol("to-menu");
 const CHAT_REQUEST = Symbol("chat-request");
+const CHAT_ACTIVITY = Symbol("chat-activity");
 
 export const GameEvents = {
 	START_GAME,
@@ -20,6 +21,7 @@ export const GameEvents = {
 	GAME_OVER,
 	TO_MENU,
 	CHAT_REQUEST,
+	CHAT_ACTIVITY,
 } as const;
 
 export type GameEventType =
@@ -28,7 +30,8 @@ export type GameEventType =
 	| typeof RESUME_GAME
 	| typeof GAME_OVER
 	| typeof TO_MENU
-	| typeof CHAT_REQUEST;
+	| typeof CHAT_REQUEST
+	| typeof CHAT_ACTIVITY;
 
 type EventDataMap = {
 	[START_GAME]: undefined;
@@ -37,6 +40,7 @@ type EventDataMap = {
 	[GAME_OVER]: undefined;
 	[TO_MENU]: undefined;
 	[CHAT_REQUEST]: ChatRequestEvent;
+	[CHAT_ACTIVITY]: ChatRequestEvent;
 };
 
 type EventCallback = (...args: unknown[]) => void;

@@ -35,21 +35,21 @@ const COMMAND_DELIVER = "!отдать";
 
 export function parseCommand(text: string): CookRequest | null {
 	const message = text.trim().toLowerCase();
+	const [word = "", ...rest] = message.split(/\s+/);
 
-	if (message.startsWith(COMMAND_TAKE)) {
-		return { kind: "get-order" };
+	switch (word) {
+		case COMMAND_TAKE:
+			return { kind: "get-order" };
+
+		case COMMAND_DELIVER:
+			return { kind: "deliver" };
+
+		case COMMAND_PLACE: {
+			const ingredient = INGREDIENT_ALIASES[rest.join(" ")];
+			return ingredient ? { kind: "fetch", ingredient } : null;
+		}
+
+		default:
+			return null;
 	}
-
-	if (message.startsWith(COMMAND_DELIVER)) {
-		return { kind: "deliver" };
-	}
-
-	if (message.startsWith(COMMAND_PLACE)) {
-		const argument = message.slice(COMMAND_PLACE.length).trim();
-		const ingredient = INGREDIENT_ALIASES[argument];
-
-		return ingredient ? { kind: "fetch", ingredient } : null;
-	}
-
-	return null;
 }

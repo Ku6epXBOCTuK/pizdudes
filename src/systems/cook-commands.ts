@@ -36,10 +36,14 @@ export function createCookCommandsSystem(ctx: GameContext) {
 		return cook;
 	}
 
-	function onRequest({ cook, request }: ChatRequestEvent) {
+	function onMessage({ cook, request }: ChatRequestEvent) {
 		const target = ensureCook(cook);
 
 		if (!target) {
+			return;
+		}
+
+		if (!request) {
 			return;
 		}
 
@@ -53,13 +57,15 @@ export function createCookCommandsSystem(ctx: GameContext) {
 		console.info(`[cook] ${cook.name} cannot do that yet:`, request);
 	}
 
-	GameEngine.on(GameEvents.CHAT_REQUEST, onRequest);
+	GameEngine.on(GameEvents.CHAT_ACTIVITY, onMessage);
+	GameEngine.on(GameEvents.CHAT_REQUEST, onMessage);
 
 	const system = () => {};
 
 	return Object.assign(system, {
 		dispose() {
-			GameEngine.off(GameEvents.CHAT_REQUEST, onRequest);
+			GameEngine.off(GameEvents.CHAT_ACTIVITY, onMessage);
+			GameEngine.off(GameEvents.CHAT_REQUEST, onMessage);
 		},
 	});
 }

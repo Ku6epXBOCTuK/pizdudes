@@ -6,16 +6,16 @@ import {
 	type Texture,
 	TilingSprite,
 } from "pixi.js";
-import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
-import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
+import { COOK_WALK_FPS, cookWalkFrames } from "../assets/cook";
+import { type ControlMode, createControlState } from "../config/control";
 import {
-	type FieldArea,
 	FIELD_SLOTS,
+	type FieldArea,
 	SPAWN_AREA,
 	WANDER_AREA,
 } from "../config/field";
-import { createControlState, type ControlMode } from "../config/control";
 import { createCarryState } from "../config/recipes";
+import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createCookBadge } from "../ui/cook-badge";
 import type { CookEntity, CookIdentity, Entity, Vector2 } from "./world";
@@ -27,7 +27,7 @@ export interface Size {
 
 const FLOOR_LABEL = "floor";
 const HOUSE_COOK_ID = "house";
-const HOUSE_COOK_NAME = "Повар";
+const HOUSE_COOK_NAME = "Главный Пиздюдес";
 
 export function spawnFloor(
 	layer: Container,

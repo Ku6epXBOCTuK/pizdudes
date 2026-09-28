@@ -12,14 +12,14 @@ export interface TwitchChat {
 	onError(callback: (error: Error) => void): void;
 }
 
-export interface TwitchCommand {
+export interface TwitchMessage {
 	cook: CookIdentity;
-	request: CookRequest;
+	request: CookRequest | null;
 }
 
 export function createTwitchChat(
 	config: TwitchConfig,
-	onRequest: (command: TwitchCommand) => void,
+	onMessage: (message: TwitchMessage) => void,
 ): TwitchChat {
 	const client = new ChatClient({
 		channels: [config.channel],
@@ -61,10 +61,9 @@ export function createTwitchChat(
 
 		if (!request) {
 			console.debug(`[twitch] ${author}: ${text}`);
-			return;
 		}
 
-		onRequest({
+		onMessage({
 			cook: {
 				userId: message.userInfo.userId,
 				name: message.userInfo.displayName,

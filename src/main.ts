@@ -24,9 +24,9 @@ if (!twitch) {
 		"[twitch] нет VITE_TWITCH_CHANNEL в .env, чат не подключён, повар играет сам",
 	);
 } else {
-	const chat = createTwitchChat(twitch, (command) => {
-		GameEngine.emit(GameEvents.CHAT_REQUEST, command);
-		console.info(`[twitch] ${command.cook.name}:`, command.request);
+	const chat = createTwitchChat(twitch, ({ cook, request }) => {
+		GameEngine.emit(GameEvents.CHAT_ACTIVITY, { cook, request });
+		console.info(`[twitch] ${cook.name}:`, request ?? "(обычное сообщение)");
 	});
 
 	chat.onConnect(() => {
