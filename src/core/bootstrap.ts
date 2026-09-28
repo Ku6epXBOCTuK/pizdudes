@@ -10,6 +10,7 @@ import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
 import { createCookBadgeSystem } from "../systems/cook-badge";
 import { createCookCommandsSystem } from "../systems/cook-commands";
+import { createMarqueeSystem } from "../systems/marquee";
 import { createMovementSystem } from "../systems/movement";
 import { createOrderAiSystem } from "../systems/order-ai";
 import { createOrderAssemblySystem } from "../systems/order-assembly";
@@ -45,7 +46,7 @@ const SYSTEM_GROUPS: SystemGroup[] = [
 	},
 	{
 		name: "ui",
-		factories: [createCookBadgeSystem],
+		factories: [createCookBadgeSystem, createMarqueeSystem],
 	},
 ];
 

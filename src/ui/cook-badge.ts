@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from "pixi.js";
 
+import { carryEmoji } from "../config/items";
 import type { Item, OrderState } from "../config/recipes";
 
 const LABEL_COLOR = 0xf2f4f8;
@@ -14,16 +15,6 @@ const CARRY_OFFSET_Y = 20;
 const DOT_OFFSET_Y = 38;
 const DOT_DONE_COLOR = 0xf5c542;
 const DOT_PENDING_COLOR = 0x7c8698;
-
-const CARRY_EMOJI: Record<Item, string> = {
-	bun: "🍞",
-	sauce: "🥫",
-	patty: "🥩",
-	cheese: "🧀",
-	salad: "🥬",
-	tomato: "🍅",
-	burger: "🍔",
-};
 
 export const BADGE_OFFSET_Y = 62;
 
@@ -66,10 +57,6 @@ export function createCookBadge(name: string): CookBadge {
 	root.addChild(label, carry, dots);
 
 	return { root, label, carry, dots, signature: "" };
-}
-
-export function carryEmoji(item: Item | null): string {
-	return item ? CARRY_EMOJI[item] : "";
 }
 
 export function drawCookBadge(
