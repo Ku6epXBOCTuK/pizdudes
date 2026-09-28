@@ -1,7 +1,4 @@
-import { Text } from "pixi.js";
-
-import "./style.css";
-import { spawnEntity, world } from "./miniplex";
+import { bootstrapGame, type Game } from "./core/bootstrap";
 import { createPixiApp } from "./pixi";
 
 const host = document.querySelector<HTMLElement>("#app");
@@ -12,15 +9,7 @@ if (!host) {
 
 const { app, layers } = await createPixiApp(host);
 
-spawnEntity("player");
+const game: Game = await bootstrapGame(app, layers);
+game.start();
 
-const label = new Text({
-	text: `pixi + miniplex: ${world.size} entities`,
-	style: { fill: "#7c8698", fontSize: 20 },
-});
-
-label.anchor.set(0.5);
-label.position.set(app.screen.width / 2, app.screen.height / 2);
-layers.ui.addChild(label);
-
-console.log("Сущности в мире:", [...world]);
+(window as unknown as { game: Game }).game = game;
