@@ -5,10 +5,12 @@ import cookTextureUrl from "../../assets/characters/cook/cook.png";
 import { loadFloor } from "../assets/floor";
 import { loadStations } from "../assets/stations";
 import { MAX_FRAME_MS } from "../constants";
+import type { ControlMode } from "../config/control";
 import type { Layers } from "../pixi";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
 import { createCookBadgeSystem } from "../systems/cook-badge";
+import { createCookCommandsSystem } from "../systems/cook-commands";
 import { createMovementSystem } from "../systems/movement";
 import { createOrderAiSystem } from "../systems/order-ai";
 import { createOrderAssemblySystem } from "../systems/order-assembly";
@@ -28,7 +30,7 @@ const SYSTEM_GROUPS: SystemGroup[] = [
 	},
 	{
 		name: "order",
-		factories: [createOrderAssemblySystem],
+		factories: [createOrderAssemblySystem, createCookCommandsSystem],
 	},
 	{
 		name: "physics",
@@ -127,6 +129,18 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 
 		setTimeScale(scale: number) {
 			timeScale = scale;
+		},
+
+		setControlMode(mode: ControlMode) {
+			const controlled = world.with("control");
+
+			for (const cook of controlled) {
+				cook.control.mode = mode;
+
+				if (mode === "auto") {
+					cook.control.request = null;
+				}
+			}
 		},
 
 		reset() {

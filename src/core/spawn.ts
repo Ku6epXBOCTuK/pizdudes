@@ -9,6 +9,7 @@ import {
 import { cookWalkFrames, COOK_WALK_FPS } from "../assets/cook";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import { FIELD_SLOTS } from "../config/field";
+import { createControlState } from "../config/control";
 import { createCarryState } from "../config/recipes";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createCookBadge } from "../ui/cook-badge";
@@ -89,6 +90,7 @@ export function spawnCook(
 		velocity: { x: 0, y: 0 },
 		order: null,
 		carry: createCarryState(),
+		control: createControlState(),
 		target: null,
 		view,
 		badge,

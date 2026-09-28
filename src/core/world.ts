@@ -1,5 +1,6 @@
 import type { Sprite } from "pixi.js";
 import type { StationType } from "../assets/stations";
+import type { ControlState } from "../config/control";
 import type { CarryState, OrderState } from "../config/recipes";
 import type { CookBadge } from "../ui/cook-badge";
 
@@ -20,6 +21,7 @@ export type Entity = Partial<{
 	velocity: Vector2;
 	order: OrderState | null;
 	carry: CarryState;
+	control: ControlState;
 	target: TargetState | null;
 	view: Sprite;
 	badge: CookBadge;
