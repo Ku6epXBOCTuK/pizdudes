@@ -23,6 +23,41 @@ const ROW_OFFSET_Y = 14;
 const LABEL_OFFSET_Y = 30;
 const ROW_GAP = 6;
 
+const BADGE_SIGNATURE_NONE = -1;
+const PROGRESS_NONE = 255;
+const PROGRESS_STEPS = 100;
+
+const ITEM_ORDER: (Item | null)[] = [
+	null,
+	"bun",
+	"sauce",
+	"patty",
+	"cheese",
+	"salad",
+	"tomato",
+	"burger",
+];
+
+const ITEM_CODE = new Map<Item | null, number>(
+	ITEM_ORDER.map((item, index) => [item, index]),
+);
+
+export function badgeSignature(
+	order: OrderState | null,
+	carried: Item | null,
+	progress: number | null,
+): number {
+	const item = ITEM_CODE.get(carried) ?? 0;
+	const placed = order ? Math.min(99, order.placed.length) : 0;
+	const target = order ? Math.min(99, order.target.length) : 0;
+	const step =
+		progress === null
+			? PROGRESS_NONE
+			: Math.min(PROGRESS_STEPS - 1, Math.floor(progress * PROGRESS_STEPS));
+
+	return ((item * 100 + placed) * 100 + target) * 256 + step;
+}
+
 export const BADGE_OFFSET_Y = 72;
 
 export interface CookBadge {
@@ -31,7 +66,7 @@ export interface CookBadge {
 	carry: Text;
 	dots: Graphics;
 	bar: Graphics;
-	signature: string;
+	signature: number;
 }
 
 export function createCookBadge(name: string): CookBadge {
@@ -66,7 +101,7 @@ export function createCookBadge(name: string): CookBadge {
 	const root = new Container({ label: "cook-badge" });
 	root.addChild(bar, carry, dots, label);
 
-	return { root, label, carry, dots, bar, signature: "" };
+	return { root, label, carry, dots, bar, signature: BADGE_SIGNATURE_NONE };
 }
 
 export function drawCookBadge(
@@ -89,7 +124,6 @@ export function drawCookBadge(
 	const total = order.target.length;
 	const placed = order.placed.length;
 
-	// эмодзи слева от точек, вся строка центрируется по бейджу
 	const carryWidth = badge.carry.text ? badge.carry.width : 0;
 	const dotsWidth = (total - 1) * DOT_SPACING;
 	const gap = carryWidth ? ROW_GAP : 0;

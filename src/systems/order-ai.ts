@@ -75,16 +75,16 @@ function nextTargetType(
 function walkTo(cook: Cook, point: Vector2) {
 	const dx = point.x - cook.position.x;
 	const dy = point.y - cook.position.y;
-	const distance = Math.hypot(dx, dy);
+	const dist = Math.sqrt(dx * dx + dy * dy);
 
-	if (distance <= WANDER_ARRIVE_DISTANCE) {
+	if (dist <= WANDER_ARRIVE_DISTANCE) {
 		cook.velocity.x = 0;
 		cook.velocity.y = 0;
 		return true;
 	}
 
-	cook.velocity.x = (dx / distance) * WANDER_SPEED;
-	cook.velocity.y = (dy / distance) * WANDER_SPEED;
+	cook.velocity.x = (dx / dist) * WANDER_SPEED;
+	cook.velocity.y = (dy / dist) * WANDER_SPEED;
 	return false;
 }
 
@@ -117,7 +117,6 @@ export function createOrderAiSystem(
 
 			if (control.request && isRequestSettled(control.request, cook)) {
 				control.request = null;
-				// работа закончилась — новое ожидание с новым порогом
 				control.idleMs = 0;
 				control.idleGoalMs = rollIdleGoalMs(random);
 			}
@@ -141,8 +140,6 @@ export function createOrderAiSystem(
 
 			cook.target = null;
 
-			// гуляет только повар из чата и только когда выбрал порог простоя;
-			// автоповар без цели стоит на месте
 			const mayWander =
 				control.mode === "chat" && control.idleMs >= control.idleGoalMs;
 
@@ -158,7 +155,6 @@ export function createOrderAiSystem(
 
 			if (walkTo(cook, cook.wander)) {
 				cook.wander = null;
-				// дошли до точки — снова ждём, порог перебрасываем
 				control.idleMs = 0;
 				control.idleGoalMs = rollIdleGoalMs(random);
 			}
