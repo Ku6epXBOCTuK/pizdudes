@@ -11,9 +11,10 @@ import { createAnimationSystem } from "../systems/animation";
 import { createCookBadgeSystem } from "../systems/cook-badge";
 import { createCookCommandsSystem } from "../systems/cook-commands";
 import {
-	createDevCommandsSystem,
+	createDevSpawnRuntime,
+	createDevSpawnSystem,
 	type DevCommandsOptions,
-} from "../systems/dev-commands";
+} from "../systems/dev-spawn";
 import { createMarqueeSystem } from "../systems/marquee";
 import { createMovementSystem } from "../systems/movement";
 import { createOrderAiSystem } from "../systems/order-ai";
@@ -39,7 +40,10 @@ function systemGroups(devOptions: DevCommandsOptions): SystemGroup[] {
 		},
 		{
 			name: "dev",
-			factories: [(ctx) => createDevCommandsSystem(ctx, devOptions)],
+			factories: [
+				(ctx) =>
+					createDevSpawnRuntime(ctx, createDevSpawnSystem(ctx), devOptions),
+			],
 		},
 		{
 			name: "physics",

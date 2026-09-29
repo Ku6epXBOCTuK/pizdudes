@@ -18,7 +18,8 @@ import { createOrderAssemblySystem } from "../src/systems/order-assembly";
 import {
 	AGENT_SPEED,
 	AI_ARRIVE_DISTANCE,
-	CHAT_IDLE_WANDER_MS,
+	IDLE_WANDER_MAX_MS,
+	IDLE_WANDER_MIN_MS,
 	MAX_FRAME_MS,
 	WANDER_SPEED,
 } from "../src/constants";
@@ -69,7 +70,18 @@ function makeCook(
 	} satisfies Entity;
 }
 
-function harness(cooks: Entity[]): Harness {
+function makeRandom(seed = 1): () => number {
+	let state = seed >>> 0;
+	return () => {
+		state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+		return state / 4294967296;
+	};
+}
+
+function harness(
+	cooks: Entity[],
+	random: () => number = makeRandom(),
+): Harness {
 	const world = new World<Entity>();
 
 	for (const slot of stationPositions()) {
@@ -85,17 +97,19 @@ function harness(cooks: Entity[]): Harness {
 		world.add(cook);
 	}
 
-	const ai = createOrderAiSystem({
-		world,
-		app: { screen: SCREEN },
-	} as never);
+	const ai = createOrderAiSystem(
+		{
+			world,
+			app: { screen: SCREEN },
+		} as never,
+		random,
+	);
 	const assembly = createOrderAssemblySystem({
 		world,
 		app: { screen: SCREEN },
 	} as never);
 
 	const tick = () => {
-		// dt зажат в MAX_FRAME_MS, как в реальном игровом цикле
 		ai(Math.min(FRAME, MAX_FRAME_MS));
 		assembly(Math.min(FRAME, MAX_FRAME_MS));
 		for (const cook of world) {
@@ -199,8 +213,11 @@ describe("chat-режим", () => {
 	}
 
 	it("без запроса стоит на месте", () => {
-		const cook = chatCook();
-		const h = harness([cook]);
+		const cook = makeCook(
+			{ name: "viewer", control: createControlState("chat", () => 1) },
+			{ x: SCREEN.width / 2, y: SCREEN.height / 2 },
+		);
+		const h = harness([cook], () => 1);
 
 		h.step(5);
 
@@ -220,7 +237,6 @@ describe("chat-режим", () => {
 	});
 
 	it("!положи ведёт сначала к полке, потом к столу", () => {
-		// стартуем далеко от полки, иначе забор случится на первом же кадре
 		const cook = chatCook({ order: createOrder(["bun", "cheese", "bun"]) });
 		const h = harness([cook]);
 
@@ -284,21 +300,55 @@ describe("chat-режим", () => {
 });
 
 describe("блуждание при простое", () => {
-	function idleCook() {
+	function idleCook(random?: () => number) {
 		return makeCook(
-			{ name: "viewer", control: createControlState("chat") },
+			{
+				name: "viewer",
+				control: createControlState("chat", random),
+			},
 			{ x: SCREEN.width / 2, y: SCREEN.height / 2 },
 		);
 	}
 
 	it("до порога стоит на месте", () => {
-		const h = harness([idleCook()]);
+		const h = harness([idleCook(() => 0)], () => 0);
 		const c = cookOf(h, "viewer");
 
-		h.step(CHAT_IDLE_WANDER_MS / 1000 - 1);
+		h.step(IDLE_WANDER_MIN_MS / 1000 - 0.5);
 
 		expect(speedOf(c)).toBe(0);
 		expect(c.wander).toBeNull();
+	});
+
+	it("после минимального порога уже уходит бродить", () => {
+		const h = harness([idleCook(() => 0)], () => 0);
+		const c = cookOf(h, "viewer");
+
+		h.step(IDLE_WANDER_MIN_MS / 1000 + 0.5);
+
+		expect(speedOf(c)).toBeCloseTo(WANDER_SPEED);
+	});
+
+	it("до максимального порога при random = 1 ещё стоит", () => {
+		const h = harness([idleCook(() => 1)], () => 1);
+		const c = cookOf(h, "viewer");
+
+		h.step(IDLE_WANDER_MAX_MS / 1000 - 0.5);
+		expect(speedOf(c)).toBe(0);
+
+		h.step(1);
+		expect(speedOf(c)).toBeCloseTo(WANDER_SPEED);
+	});
+
+	it("порог каждого ожидания разный: random меняет момент старта", () => {
+		const early = harness([idleCook(() => 0)], () => 0);
+		const late = harness([idleCook(() => 1)], () => 1);
+
+		early.step(8);
+		late.step(8);
+
+		expect(speedOf(cookOf(early, "viewer"))).toBeCloseTo(WANDER_SPEED);
+		expect(speedOf(cookOf(late, "viewer"))).toBe(0);
 	});
 
 	it("после порога уходит бродить со скоростью WANDER_SPEED", () => {
@@ -306,8 +356,6 @@ describe("блуждание при простое", () => {
 		const c = cookOf(h, "viewer");
 		let moved = false;
 
-		// случайная точка может оказаться рядом с поваром, поэтому ждём
-		// первый настоящий переход, а не смотрим на кадр через порог
 		for (let i = 0; i < 60 * 90; i++) {
 			h.tick();
 			if (Math.abs(speedOf(c) - WANDER_SPEED) < 0.001) {
@@ -377,7 +425,6 @@ describe("блуждание при простое", () => {
 		const h = harness([idleCook()]);
 		const c = cookOf(h, "viewer");
 
-		// ждём первого перехода, потом его завершения
 		let started = false;
 		for (let i = 0; i < 60 * 90; i++) {
 			h.tick();
@@ -390,8 +437,7 @@ describe("блуждание при простое", () => {
 		expect(speedOf(c)).toBe(0);
 		expect(c.control?.idleMs).toBeLessThan(100);
 
-		// и стоит дальше, пока не набежит новый порог
-		h.step(CHAT_IDLE_WANDER_MS / 1000 - 1);
+		h.step(2);
 		expect(speedOf(c)).toBe(0);
 		expect(c.wander).toBeNull();
 	});
@@ -408,17 +454,14 @@ describe("блуждание при простое", () => {
 			previousWander = c.wander ?? null;
 		}
 
-		// 90с: 12с пауза + переход, значит меньше 7 точек
-		expect(arrivals).toBeGreaterThan(1);
-		expect(arrivals).toBeLessThan(8);
+		expect(arrivals).toBeGreaterThan(2);
+		expect(arrivals).toBeLessThan(14);
 	});
 
 	it("команда из чата прерывает блуждание", () => {
 		const h = harness([idleCook()]);
 		const c = cookOf(h, "viewer");
 
-		// ждём именно перехода: точка блуждания иногда выпадает рядом
-		// с поваром и он успевает дойти за один кадр
 		let walking = false;
 		for (let i = 0; i < 60 * 90; i++) {
 			h.tick();
@@ -436,6 +479,67 @@ describe("блуждание при простое", () => {
 		expect(c.control?.idleMs).toBe(0);
 		expect(typeOf(c)).toBe("serving-counter");
 		expect(speedOf(c)).toBeCloseTo(AGENT_SPEED);
+	});
+});
+
+describe("бот-гуляка из тестового прогона", () => {
+	function roamer(random: () => number = () => 0.5) {
+		return makeCook({
+			name: "roamer",
+			control: createControlState("chat", random),
+		});
+	}
+
+	it("ждёт порог, а не идёт сразу", () => {
+		const h = harness([roamer(() => 1)], () => 1);
+		const c = cookOf(h, "roamer");
+
+		h.tick();
+		expect(c.wander).toBeNull();
+		expect(speedOf(c)).toBe(0);
+	});
+
+	it("не идёт к станциям без заказа", () => {
+		const h = harness([roamer()]);
+		const c = cookOf(h, "roamer");
+
+		h.step(2);
+		expect(typeOf(c)).toBeNull();
+	});
+
+	it("никогда не берёт заказ и не появляется на станции", () => {
+		const h = harness([roamer()]);
+		const c = cookOf(h, "roamer");
+
+		h.step(60);
+
+		expect(c.order).toBeNull();
+		expect(c.carry?.item).toBeNull();
+		expect(c.control?.action).toBeNull();
+	});
+
+	it("меняет точку по ходу, а не топчется на месте", () => {
+		const h = harness([roamer()]);
+		const c = cookOf(h, "roamer");
+
+		const points = new Set<string>();
+		for (let i = 0; i < 60 * 120; i++) {
+			h.tick();
+			if (c.wander) points.add(`${c.wander.x}:${c.wander.y}`);
+		}
+
+		expect(points.size).toBeGreaterThan(1);
+	});
+
+	it("реагирует на команду из чата так же, как настоящий зритель", () => {
+		const h = harness([roamer()]);
+		const c = cookOf(h, "roamer");
+
+		issueRequest(c, { kind: "get-order" });
+		h.step(0.1);
+
+		expect(c.wander).toBeNull();
+		expect(typeOf(c)).toBe("serving-counter");
 	});
 });
 
@@ -462,7 +566,6 @@ describe("пауза при работе со станцией", () => {
 		expect(action?.kind).toBe("get-order");
 		expect(action?.progress).toBeLessThan(1);
 
-		// за время работы повар не уходит со станции
 		const start = { ...c.position! };
 		h.step(0.3);
 		expect(
@@ -480,7 +583,6 @@ describe("пауза при работе со станцией", () => {
 		firstAction(h);
 		const duration = ACTION_DURATIONS_MS["get-order"] / 1000;
 
-		// сразу после старта прогресс близок к нулю
 		expect(c.control?.action?.progress ?? 1).toBeLessThan(0.3);
 
 		h.step(duration * 0.5);
@@ -488,7 +590,6 @@ describe("пауза при работе со станцией", () => {
 		expect(mid).toBeGreaterThan(0.2);
 		expect(mid ?? 1).toBeLessThan(0.9);
 
-		// после полного срока действие завершено
 		h.step(duration);
 		expect(c.control?.action).toBeNull();
 	});
@@ -542,7 +643,6 @@ describe("пауза при работе со станцией", () => {
 			if (action) kinds.add(action.kind);
 		}
 
-		// этот сценарий проходит через продажу, а дальше новый заказ
 		expect(kinds.has("sell")).toBe(true);
 	});
 
@@ -556,12 +656,10 @@ describe("пауза при работе со станцией", () => {
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("take-burger");
 
-		// бар ещё не заполнен — руки пусты
 		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.5);
 		expect(c.carry?.item).toBeNull();
 		expect(c.control?.action?.kind).toBe("take-burger");
 
-		// бар дошёл до конца — предмет в руках, действие завершено
 		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.6);
 		expect(c.carry?.item).toBe("burger");
 		expect(c.control?.action).toBeNull();
@@ -576,12 +674,10 @@ describe("пауза при работе со станцией", () => {
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("place-ingredient");
 
-		// половина полоски — ингредиент ещё в руках, точка не отмечена
 		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.5);
 		expect(c.carry?.item).toBe("bun");
 		expect(c.order?.placed).toEqual([]);
 
-		// полоска заполнена — ингредиент сдан, руки свободны
 		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.6);
 		expect(c.carry?.item).toBeNull();
 		expect(c.order?.placed).toEqual(["bun"]);
@@ -636,7 +732,6 @@ describe("пауза при работе со станцией", () => {
 		firstAction(h);
 		expect(c.control?.action?.item).toBe("bun");
 
-		// заказ не меняется за время работы, сдаётся именно тот ингредиент
 		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 1.2);
 		expect(c.order?.placed).toEqual(["bun"]);
 	});
@@ -648,8 +743,6 @@ describe("устойчивость", () => {
 			makeCook({ name: "v", control: createControlState("chat") }),
 		]);
 
-		// 30с заведомо больше порога блуждания, поэтому координаты и скорость
-		// здесь не проверяем — проверяем только отсутствие исключений
 		expect(() => h.step(30)).not.toThrow();
 
 		const c = cookOf(h, "v");
@@ -659,13 +752,14 @@ describe("устойчивость", () => {
 	});
 
 	it("повар без заказа в chat-режиме стоит до порога блуждания", () => {
-		const h = harness([
-			makeCook({ name: "v", control: createControlState("chat") }),
-		]);
+		const h = harness(
+			[makeCook({ name: "v", control: createControlState("chat", () => 1) })],
+			() => 1,
+		);
 		const c = cookOf(h, "v");
 		const start = { ...c.position! };
 
-		h.step(CHAT_IDLE_WANDER_MS / 1000 - 1);
+		h.step(IDLE_WANDER_MAX_MS / 1000 - 0.5);
 
 		expect(speedOf(c)).toBe(0);
 		expect(c.position?.x).toBeCloseTo(start.x);
@@ -712,7 +806,6 @@ describe("устойчивость", () => {
 		const c = cookOf(h, "house");
 		const counter = stationAt("serving-counter");
 
-		// момент получения заказа — повар как раз стоит у точки подхода
 		let atArrival: Vector2 | null = null;
 		for (let i = 0; i < 60 * 30; i++) {
 			h.tick();
@@ -729,7 +822,6 @@ describe("устойчивость", () => {
 			atArrival!.y - counter.y,
 		);
 
-		// стоит у самой точки подхода, а не в радиусе прибытия от неё
 		expect(distance).toBeLessThanOrEqual(AI_ARRIVE_DISTANCE + 1);
 	});
 });

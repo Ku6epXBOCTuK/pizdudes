@@ -1,3 +1,4 @@
+import { IDLE_WANDER_MAX_MS, IDLE_WANDER_MIN_MS } from "../constants";
 import {
 	type CarryState,
 	type Ingredient,
@@ -36,6 +37,7 @@ export interface ControlState {
 	mode: ControlMode;
 	request: CookRequest | null;
 	idleMs: number;
+	idleGoalMs: number;
 	action: ActionState | null;
 }
 
@@ -45,8 +47,23 @@ export interface CookProgress {
 	control: ControlState;
 }
 
-export function createControlState(mode: ControlMode = "auto"): ControlState {
-	return { mode, request: null, idleMs: 0, action: null };
+export function createControlState(
+	mode: ControlMode = "auto",
+	random: () => number = Math.random,
+): ControlState {
+	return {
+		mode,
+		request: null,
+		idleMs: 0,
+		idleGoalMs: rollIdleGoalMs(random),
+		action: null,
+	};
+}
+
+export function rollIdleGoalMs(random: () => number = Math.random): number {
+	return (
+		IDLE_WANDER_MIN_MS + random() * (IDLE_WANDER_MAX_MS - IDLE_WANDER_MIN_MS)
+	);
 }
 
 export function markActive(control: ControlState) {

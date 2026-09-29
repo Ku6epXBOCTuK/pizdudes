@@ -18,6 +18,8 @@ export const COOK_HALF_SIZE = 32;
 
 export const AI_ACTION_COOLDOWN_MS = 400;
 
-export const CHAT_IDLE_WANDER_MS = 12000;
+export const IDLE_WANDER_MIN_MS = 4000;
+
+export const IDLE_WANDER_MAX_MS = 12000;
 
 export const WANDER_SPEED = 85;

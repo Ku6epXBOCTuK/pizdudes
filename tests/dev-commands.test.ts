@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import { DEV_SPAWN } from "../src/config/dev-spawn";
+import { pickIntent } from "../src/systems/dev-spawn";
 import { parseCommand } from "../src/twitch/commands";
-import { MAX_TEST_BOTS, parseDevCommand } from "../src/twitch/dev-commands";
+import { parseDevCommand } from "../src/twitch/dev-commands";
+
+const MAX_TEST_BOTS = DEV_SPAWN.maxBots;
+
+function sequence(values: number[]): () => number {
+	let index = 0;
+	return () => values[index++ % values.length]!;
+}
 
 describe("parseDevCommand", () => {
 	it("!тест 100 просит 100 ботов", () => {
@@ -25,10 +34,10 @@ describe("parseDevCommand", () => {
 		});
 	});
 
-	it("ограничивает количество потолком", () => {
+	it("парсер не режет число: потолок ставит спавн", () => {
 		expect(parseDevCommand(`!тест ${MAX_TEST_BOTS * 10}`)).toEqual({
 			kind: "spawn-bots",
-			count: MAX_TEST_BOTS,
+			count: MAX_TEST_BOTS * 10,
 		});
 	});
 
@@ -80,5 +89,27 @@ describe("тестовые команды не конфликтуют с игр�
 	it("!отдать остаётся игровой командой", () => {
 		expect(parseCommand("!отдать")).toEqual({ kind: "deliver" });
 		expect(parseDevCommand("!отдать")).toBeNull();
+	});
+});
+
+describe("pickIntent", () => {
+	it("wanderChance 0 — все работают", () => {
+		expect(pickIntent(() => 0, 0)).toBe("work");
+		expect(pickIntent(() => 0.99, 0)).toBe("work");
+	});
+
+	it("wanderChance 1 — все бродят", () => {
+		expect(pickIntent(() => 0.99, 1)).toBe("idle");
+	});
+
+	it("порог разделяет: сэмпл ниже шанса — блуждание, выше — работа", () => {
+		expect(pickIntent(() => 0.29, 0.3)).toBe("idle");
+		expect(pickIntent(() => 0.31, 0.3)).toBe("work");
+	});
+
+	it("дефолтный шанс даёт оба режима на реальной последовательности", () => {
+		const random = sequence([0.1, 0.9]);
+		expect(pickIntent(random)).toBe("idle");
+		expect(pickIntent(random)).toBe("work");
 	});
 });

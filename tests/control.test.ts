@@ -10,6 +10,7 @@ import {
 	isBusy,
 	isRequestSettled,
 	markActive,
+	rollIdleGoalMs,
 	startAction,
 } from "../src/config/control";
 import {
@@ -19,7 +20,7 @@ import {
 	type Ingredient,
 	type OrderState,
 } from "../src/config/recipes";
-import { CHAT_IDLE_WANDER_MS } from "../src/constants";
+import { IDLE_WANDER_MAX_MS, IDLE_WANDER_MIN_MS } from "../src/constants";
 
 interface CookState {
 	carry: CarryState;
@@ -44,12 +45,14 @@ const fetchOf = (ingredient: Ingredient): CookRequest => ({
 
 describe("createControlState", () => {
 	it("по умолчанию auto, без запроса и действия, idle сброшен", () => {
-		expect(createControlState()).toEqual({
-			mode: "auto",
-			request: null,
-			idleMs: 0,
-			action: null,
-		});
+		const control = createControlState();
+
+		expect(control.mode).toBe("auto");
+		expect(control.request).toBeNull();
+		expect(control.idleMs).toBe(0);
+		expect(control.action).toBeNull();
+		expect(control.idleGoalMs).toBeGreaterThanOrEqual(IDLE_WANDER_MIN_MS);
+		expect(control.idleGoalMs).toBeLessThanOrEqual(IDLE_WANDER_MAX_MS);
 	});
 
 	it("принимает режим", () => {
@@ -381,8 +384,37 @@ describe("связка canRequest и isRequestSettled", () => {
 
 		expect(used).toEqual(["bun", "cheese", "bun", "deliver"]);
 	});
+});
 
-	it("порог блуждания положителен", () => {
-		expect(CHAT_IDLE_WANDER_MS).toBeGreaterThan(0);
+describe("rollIdleGoalMs", () => {
+	it("всегда попадает в диапазон 4..12с", () => {
+		for (let i = 0; i <= 100; i++) {
+			const goal = rollIdleGoalMs(() => i / 100);
+			expect(goal).toBeGreaterThanOrEqual(IDLE_WANDER_MIN_MS);
+			expect(goal).toBeLessThanOrEqual(IDLE_WANDER_MAX_MS);
+		}
+	});
+
+	it("на краях диапазона даёт точные границы", () => {
+		expect(rollIdleGoalMs(() => 0)).toBe(IDLE_WANDER_MIN_MS);
+		expect(rollIdleGoalMs(() => 1)).toBe(IDLE_WANDER_MAX_MS);
+	});
+
+	it("середина даёт ровно половину", () => {
+		expect(rollIdleGoalMs(() => 0.5)).toBe(8000);
+	});
+
+	it("каждый бросок даёт своё значение", () => {
+		const values = [0, 0.25, 0.5, 0.75, 1].map((seed) =>
+			rollIdleGoalMs(() => seed),
+		);
+
+		expect(new Set(values).size).toBe(5);
+	});
+
+	it("createControlState сразу задаёт порог из диапазона", () => {
+		const control = createControlState("chat", () => 0);
+
+		expect(control.idleGoalMs).toBe(IDLE_WANDER_MIN_MS);
 	});
 });

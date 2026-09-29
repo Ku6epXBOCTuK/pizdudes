@@ -4,11 +4,12 @@ import { moveToward } from "../core/navigation";
 import { randomWanderPoint } from "../config/field";
 import { stationFinder } from "../core/stations";
 import type { Entity, Vector2 } from "../core/world";
-import { CHAT_IDLE_WANDER_MS, WANDER_SPEED } from "../constants";
+import { WANDER_SPEED } from "../constants";
 import {
 	type ControlState,
 	isRequestSettled,
 	markActive,
+	rollIdleGoalMs,
 } from "../config/control";
 import {
 	CASH_REGISTER,
@@ -87,7 +88,10 @@ function walkTo(cook: Cook, point: Vector2) {
 	return false;
 }
 
-export function createOrderAiSystem({ app, world }: GameContext) {
+export function createOrderAiSystem(
+	{ app, world }: GameContext,
+	random: () => number = Math.random,
+) {
 	const cooks = world.with(
 		"position",
 		"velocity",
@@ -113,12 +117,15 @@ export function createOrderAiSystem({ app, world }: GameContext) {
 
 			if (control.request && isRequestSettled(control.request, cook)) {
 				control.request = null;
+				// работа закончилась — новое ожидание с новым порогом
+				control.idleMs = 0;
+				control.idleGoalMs = rollIdleGoalMs(random);
 			}
 
 			if (control.request) {
 				markActive(control);
 				cook.wander = null;
-			} else if (control.idleMs < CHAT_IDLE_WANDER_MS) {
+			} else if (control.idleMs < control.idleGoalMs) {
 				control.idleMs += dt;
 			}
 
@@ -134,19 +141,26 @@ export function createOrderAiSystem({ app, world }: GameContext) {
 
 			cook.target = null;
 
-			if (control.mode !== "chat" || control.idleMs < CHAT_IDLE_WANDER_MS) {
+			// гуляет только повар из чата и только когда выбрал порог простоя;
+			// автоповар без цели стоит на месте
+			const mayWander =
+				control.mode === "chat" && control.idleMs >= control.idleGoalMs;
+
+			if (!mayWander) {
 				cook.velocity.x = 0;
 				cook.velocity.y = 0;
 				continue;
 			}
 
 			if (!cook.wander) {
-				cook.wander = randomWanderPoint(app.screen);
+				cook.wander = randomWanderPoint(app.screen, random);
 			}
 
 			if (walkTo(cook, cook.wander)) {
 				cook.wander = null;
+				// дошли до точки — снова ждём, порог перебрасываем
 				control.idleMs = 0;
+				control.idleGoalMs = rollIdleGoalMs(random);
 			}
 		}
 	};
