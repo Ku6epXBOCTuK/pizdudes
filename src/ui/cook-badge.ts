@@ -1,13 +1,11 @@
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Sprite, Text } from "pixi.js";
 
-import { carryEmoji } from "../config/items";
+import { carryTexture } from "../assets/carry-emoji";
 import type { Item, OrderState } from "../config/recipes";
 
 const LABEL_COLOR = 0xf2f4f8;
 const LABEL_FONT_SIZE = 12;
-const CARRY_FONT_SIZE = 14;
-const EMOJI_FONT =
-	'"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+const CARRY_SIZE = 18;
 const DOT_RADIUS = 4;
 const DOT_SPACING = 12;
 const DOT_DONE_COLOR = 0xf5c542;
@@ -63,7 +61,7 @@ export const BADGE_OFFSET_Y = 72;
 export interface CookBadge {
 	root: Container;
 	label: Text;
-	carry: Text;
+	carry: Sprite;
 	dots: Graphics;
 	bar: Graphics;
 	signature: number;
@@ -82,17 +80,10 @@ export function createCookBadge(name: string): CookBadge {
 	label.anchor.set(0.5);
 	label.position.set(0, LABEL_OFFSET_Y);
 
-	const carry = new Text({
-		text: "",
-		style: {
-			fill: LABEL_COLOR,
-			fontSize: CARRY_FONT_SIZE,
-			fontFamily: EMOJI_FONT,
-			stroke: { color: 0x10131a, width: 3 },
-		},
-	});
+	const carry = new Sprite();
 	carry.anchor.set(0, 0.5);
 	carry.position.set(0, ROW_OFFSET_Y);
+	carry.visible = false;
 
 	const dots = new Graphics();
 
@@ -110,7 +101,15 @@ export function drawCookBadge(
 	carried: Item | null,
 	progress: number | null,
 ) {
-	badge.carry.text = carryEmoji(carried);
+	const texture = carryTexture(carried);
+	badge.carry.visible = texture !== null;
+
+	if (texture) {
+		badge.carry.texture = texture;
+		badge.carry.width = CARRY_SIZE;
+		badge.carry.height = CARRY_SIZE;
+	}
+
 	badge.dots.clear();
 	badge.bar.clear();
 
@@ -124,7 +123,7 @@ export function drawCookBadge(
 	const total = order.target.length;
 	const placed = order.placed.length;
 
-	const carryWidth = badge.carry.text ? badge.carry.width : 0;
+	const carryWidth = badge.carry.visible ? CARRY_SIZE : 0;
 	const dotsWidth = (total - 1) * DOT_SPACING;
 	const gap = carryWidth ? ROW_GAP : 0;
 	const rowWidth = carryWidth + gap + dotsWidth;
