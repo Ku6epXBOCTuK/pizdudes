@@ -63,8 +63,26 @@ describe("работа у станции", () => {
 		const control = createControlState("chat");
 		startAction(control, "take-ingredient");
 
-		expect(control.action).toEqual({ kind: "take-ingredient", progress: 0 });
+		expect(control.action).toEqual({
+			kind: "take-ingredient",
+			progress: 0,
+			item: null,
+		});
 		expect(isBusy({ control })).toBe(true);
+	});
+
+	it("ингредиент сохраняется в действии, чтобы применить позже", () => {
+		const control = createControlState("chat");
+		startAction(control, "take-ingredient", "cheese");
+
+		expect(control.action).toEqual({
+			kind: "take-ingredient",
+			progress: 0,
+			item: "cheese",
+		});
+
+		advanceAction(control, ACTION_DURATIONS_MS["take-ingredient"]);
+		expect(control.action).toBeNull();
 	});
 
 	it("прогресс растёт пропорционально длительности действия", () => {

@@ -546,7 +546,7 @@ describe("пауза при работе со станцией", () => {
 		expect(kinds.has("sell")).toBe(true);
 	});
 
-	it("предмет появляется в руках сразу, но повар стоит на месте", () => {
+	it("предмет появляется в руках только после окончания полоски", () => {
 		const order = createOrder(["bun"]);
 		order.placed.push("bun");
 		const cook = makeCook({ name: "house", order });
@@ -554,11 +554,91 @@ describe("пауза при работе со станцией", () => {
 		const c = cookOf(h, "house");
 
 		firstAction(h);
-		h.step(0.1);
-
-		expect(c.carry?.item).toBe("burger");
 		expect(c.control?.action?.kind).toBe("take-burger");
-		expect(c.control?.action?.progress ?? 1).toBeLessThan(1);
+
+		// бар ещё не заполнен — руки пусты
+		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.5);
+		expect(c.carry?.item).toBeNull();
+		expect(c.control?.action?.kind).toBe("take-burger");
+
+		// бар дошёл до конца — предмет в руках, действие завершено
+		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.6);
+		expect(c.carry?.item).toBe("burger");
+		expect(c.control?.action).toBeNull();
+	});
+
+	it("ингредиент попадает на сервировку только после окончания полоски", () => {
+		const order = createOrder(["bun", "cheese"]);
+		const cook = makeCook({ name: "house", order, carry: { item: "bun" } });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		expect(c.control?.action?.kind).toBe("place-ingredient");
+
+		// половина полоски — ингредиент ещё в руках, точка не отмечена
+		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.5);
+		expect(c.carry?.item).toBe("bun");
+		expect(c.order?.placed).toEqual([]);
+
+		// полоска заполнена — ингредиент сдан, руки свободны
+		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.6);
+		expect(c.carry?.item).toBeNull();
+		expect(c.order?.placed).toEqual(["bun"]);
+	});
+
+	it("заказ появляется только после окончания полоски", () => {
+		const cook = makeCook({ name: "house" });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		expect(c.control?.action?.kind).toBe("get-order");
+		expect(c.order).toBeNull();
+
+		h.step((ACTION_DURATIONS_MS["get-order"] / 1000) * 0.5);
+		expect(c.order).toBeNull();
+
+		h.step((ACTION_DURATIONS_MS["get-order"] / 1000) * 0.6);
+		expect(c.order).not.toBeNull();
+		expect(c.order?.placed).toEqual([]);
+	});
+
+	it("продажа снимает заказ и бургер только после окончания полоски", () => {
+		const order = createOrder(["bun"]);
+		order.placed.push("bun");
+		const cook = makeCook({
+			name: "house",
+			order,
+			carry: { item: "burger" },
+		});
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		expect(c.control?.action?.kind).toBe("sell");
+
+		h.step((ACTION_DURATIONS_MS.sell / 1000) * 0.5);
+		expect(c.carry?.item).toBe("burger");
+		expect(c.order).not.toBeNull();
+
+		h.step((ACTION_DURATIONS_MS.sell / 1000) * 0.6);
+		expect(c.carry?.item).toBeNull();
+		expect(c.order).toBeNull();
+	});
+
+	it("ингредиент запоминается в действии, а не берётся из заказа позже", () => {
+		const order = createOrder(["bun", "cheese"]);
+		const cook = makeCook({ name: "house", order, carry: { item: "bun" } });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		expect(c.control?.action?.item).toBe("bun");
+
+		// заказ не меняется за время работы, сдаётся именно тот ингредиент
+		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 1.2);
+		expect(c.order?.placed).toEqual(["bun"]);
 	});
 });
 

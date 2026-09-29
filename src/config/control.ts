@@ -29,6 +29,7 @@ export const ACTION_DURATIONS_MS: Record<ActionKind, number> = {
 export interface ActionState {
 	kind: ActionKind;
 	progress: number;
+	item: Ingredient | null;
 }
 
 export interface ControlState {
@@ -52,8 +53,12 @@ export function markActive(control: ControlState) {
 	control.idleMs = 0;
 }
 
-export function startAction(control: ControlState, kind: ActionKind) {
-	control.action = { kind, progress: 0 };
+export function startAction(
+	control: ControlState,
+	kind: ActionKind,
+	item: Ingredient | null = null,
+) {
+	control.action = { kind, progress: 0, item };
 }
 
 export function isBusy(cook: { control: ControlState }): boolean {

@@ -1,10 +1,15 @@
 import type { With } from "miniplex";
 import type { StationType } from "../assets/stations";
 import { hasArrived } from "../core/navigation";
-import { type ActionKind, advanceAction, startAction } from "../config/control";
+import {
+	type ActionState,
+	advanceAction,
+	startAction,
+} from "../config/control";
 import {
 	CASH_REGISTER,
 	createOrder,
+	type Ingredient,
 	INGREDIENT_STATIONS,
 	isOrderComplete,
 	ITEM_BURGER,
@@ -16,20 +21,25 @@ import type { GameContext } from "../shared/context";
 
 type OrderCook = With<Entity, "carry" | "order" | "control">;
 
-function interact(target: StationType, cook: OrderCook): ActionKind | null {
+type ActionPlan =
+	| { kind: "get-order"; item: null }
+	| { kind: "take-ingredient"; item: Ingredient }
+	| { kind: "place-ingredient"; item: Ingredient }
+	| { kind: "take-burger"; item: null }
+	| { kind: "sell"; item: null };
+
+function planAction(target: StationType, cook: OrderCook): ActionPlan | null {
 	const carry = cook.carry;
 	const order = cook.order;
 
 	if (target === SERVING_COUNTER) {
 		if (carry.item === null) {
 			if (!order) {
-				cook.order = createOrder();
-				return "get-order";
+				return { kind: "get-order", item: null };
 			}
 
 			if (isOrderComplete(order)) {
-				carry.item = ITEM_BURGER;
-				return "take-burger";
+				return { kind: "take-burger", item: null };
 			}
 
 			return null;
@@ -43,9 +53,7 @@ function interact(target: StationType, cook: OrderCook): ActionKind | null {
 			return null;
 		}
 
-		order.placed.push(carry.item);
-		carry.item = null;
-		return "place-ingredient";
+		return { kind: "place-ingredient", item: carry.item };
 	}
 
 	if (target === CASH_REGISTER) {
@@ -53,9 +61,7 @@ function interact(target: StationType, cook: OrderCook): ActionKind | null {
 			return null;
 		}
 
-		carry.item = null;
-		cook.order = null;
-		return "sell";
+		return { kind: "sell", item: null };
 	}
 
 	if (carry.item !== null || !order) {
@@ -68,8 +74,36 @@ function interact(target: StationType, cook: OrderCook): ActionKind | null {
 		return null;
 	}
 
-	carry.item = needed;
-	return "take-ingredient";
+	return { kind: "take-ingredient", item: needed };
+}
+
+function applyAction(cook: OrderCook, action: ActionState) {
+	switch (action.kind) {
+		case "get-order":
+			cook.order = createOrder();
+			return;
+
+		case "take-ingredient":
+			if (action.item) {
+				cook.carry.item = action.item;
+			}
+			return;
+
+		case "place-ingredient":
+			if (action.item && cook.order) {
+				cook.order.placed.push(action.item);
+			}
+			cook.carry.item = null;
+			return;
+
+		case "take-burger":
+			cook.carry.item = ITEM_BURGER;
+			return;
+
+		case "sell":
+			cook.carry.item = null;
+			cook.order = null;
+	}
 }
 
 export function createOrderAssemblySystem({ world }: GameContext) {
@@ -77,11 +111,12 @@ export function createOrderAssemblySystem({ world }: GameContext) {
 
 	return (dt: number) => {
 		for (const cook of cooks) {
-			if (advanceAction(cook.control, dt)) {
-				continue;
-			}
+			const action = cook.control.action;
 
-			if (cook.control.action) {
+			if (action) {
+				if (advanceAction(cook.control, dt)) {
+					applyAction(cook, action);
+				}
 				continue;
 			}
 
@@ -89,10 +124,10 @@ export function createOrderAssemblySystem({ world }: GameContext) {
 				continue;
 			}
 
-			const kind = interact(cook.target.type, cook);
+			const plan = planAction(cook.target.type, cook);
 
-			if (kind) {
-				startAction(cook.control, kind);
+			if (plan) {
+				startAction(cook.control, plan.kind, plan.item);
 			}
 		}
 	};
