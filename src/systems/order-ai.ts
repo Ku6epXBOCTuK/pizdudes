@@ -103,6 +103,14 @@ export function createOrderAiSystem({ app, world }: GameContext) {
 		for (const cook of cooks) {
 			const control = cook.control;
 
+			if (control.action) {
+				markActive(control);
+				cook.wander = null;
+				cook.velocity.x = 0;
+				cook.velocity.y = 0;
+				continue;
+			}
+
 			if (control.request && isRequestSettled(control.request, cook)) {
 				control.request = null;
 			}

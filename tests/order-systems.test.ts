@@ -7,7 +7,11 @@ import {
 	createOrder,
 	type Item,
 } from "../src/config/recipes";
-import { createControlState, type CookRequest } from "../src/config/control";
+import {
+	ACTION_DURATIONS_MS,
+	createControlState,
+	type CookRequest,
+} from "../src/config/control";
 import type { Entity, TargetState, Vector2 } from "../src/core/world";
 import { createOrderAiSystem } from "../src/systems/order-ai";
 import { createOrderAssemblySystem } from "../src/systems/order-assembly";
@@ -167,7 +171,7 @@ describe("навигация в auto-режиме", () => {
 	it("несёт бургер на кассу", () => {
 		cook.order = createOrder(["bun"]);
 		(cook.order as { placed: Item[] }).placed.push("bun");
-		cook.carry = { item: "burger", cooldownMs: 0 };
+		cook.carry = { item: "burger" };
 
 		h.step(0.1);
 
@@ -244,7 +248,7 @@ describe("chat-режим", () => {
 	it("!отдать ведёт на кассу, когда несёт бургер", () => {
 		const order = createOrder(["bun"]);
 		order.placed.push("bun");
-		const cook = chatCook({ order, carry: { item: "burger", cooldownMs: 0 } });
+		const cook = chatCook({ order, carry: { item: "burger" } });
 		const h = harness([cook]);
 
 		issue(h, { kind: "deliver" });
@@ -439,6 +443,124 @@ function issueRequest(cook: Entity, request: CookRequest) {
 	cook.control = { ...cook.control!, request, idleMs: 0 };
 	cook.wander = null;
 }
+
+describe("пауза при работе со станцией", () => {
+	function firstAction(h: Harness, name = "house") {
+		for (let i = 0; i < 60 * 40; i++) {
+			h.tick();
+			const action = cookOf(h, name).control?.action;
+			if (action) return action;
+		}
+		return null;
+	}
+
+	it("взять заказ занимает время: действие стартует и длится", () => {
+		const h = harness([makeCook({ name: "house" })]);
+		const c = cookOf(h, "house");
+
+		const action = firstAction(h);
+		expect(action?.kind).toBe("get-order");
+		expect(action?.progress).toBeLessThan(1);
+
+		// за время работы повар не уходит со станции
+		const start = { ...c.position! };
+		h.step(0.3);
+		expect(
+			Math.hypot(
+				(c.position?.x ?? 0) - start.x,
+				(c.position?.y ?? 0) - start.y,
+			),
+		).toBeLessThan(1);
+	});
+
+	it("время работы соответствует длительности действия", () => {
+		const h = harness([makeCook({ name: "house" })]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		const duration = ACTION_DURATIONS_MS["get-order"] / 1000;
+
+		// сразу после старта прогресс близок к нулю
+		expect(c.control?.action?.progress ?? 1).toBeLessThan(0.3);
+
+		h.step(duration * 0.5);
+		const mid = c.control?.action?.progress;
+		expect(mid).toBeGreaterThan(0.2);
+		expect(mid ?? 1).toBeLessThan(0.9);
+
+		// после полного срока действие завершено
+		h.step(duration);
+		expect(c.control?.action).toBeNull();
+	});
+
+	it("повар стоит с нулевой скоростью, пока работает", () => {
+		const h = harness([makeCook({ name: "house" })]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		for (let i = 0; i < 20; i++) {
+			h.tick();
+			if (c.control?.action) expect(speedOf(c)).toBe(0);
+		}
+	});
+
+	it("действие не накапливает простое время", () => {
+		const cook = makeCook({
+			name: "viewer",
+			control: createControlState("chat"),
+		});
+		const h = harness([cook]);
+		const c = cookOf(h, "viewer");
+
+		issueRequest(c, { kind: "get-order" });
+		let sawAction = false;
+		for (let i = 0; i < 60 * 40; i++) {
+			h.tick();
+			if (c.control?.action) {
+				sawAction = true;
+				expect(c.control.idleMs).toBeLessThan(100);
+			}
+		}
+
+		expect(sawAction).toBe(true);
+	});
+
+	it("все виды работы запускаются с прогрессом", () => {
+		const order = createOrder(["bun"]);
+		const cook = makeCook({
+			name: "house",
+			order,
+			carry: { item: "burger" },
+		});
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		const kinds = new Set<string>();
+		for (let i = 0; i < 60 * 60; i++) {
+			h.tick();
+			const action = c.control?.action;
+			if (action) kinds.add(action.kind);
+		}
+
+		// этот сценарий проходит через продажу, а дальше новый заказ
+		expect(kinds.has("sell")).toBe(true);
+	});
+
+	it("предмет появляется в руках сразу, но повар стоит на месте", () => {
+		const order = createOrder(["bun"]);
+		order.placed.push("bun");
+		const cook = makeCook({ name: "house", order });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		firstAction(h);
+		h.step(0.1);
+
+		expect(c.carry?.item).toBe("burger");
+		expect(c.control?.action?.kind).toBe("take-burger");
+		expect(c.control?.action?.progress ?? 1).toBeLessThan(1);
+	});
+});
 
 describe("устойчивость", () => {
 	it("повар без заказа в chat-режиме не падает за 30 секунд", () => {

@@ -47,7 +47,6 @@ export interface OrderState {
 
 export interface CarryState {
 	item: Item | null;
-	cooldownMs: number;
 }
 
 export function pickRecipe(random: () => number = Math.random): Ingredient[] {
@@ -67,7 +66,7 @@ export function createOrder(recipe = pickRecipe()): OrderState {
 }
 
 export function createCarryState(): CarryState {
-	return { item: null, cooldownMs: 0 };
+	return { item: null };
 }
 
 export function nextNeeded(order: OrderState): Ingredient | undefined {

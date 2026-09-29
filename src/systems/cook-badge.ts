@@ -2,7 +2,7 @@ import { drawCookBadge, BADGE_OFFSET_Y } from "../ui/cook-badge";
 import type { GameContext } from "../shared/context";
 
 export function createCookBadgeSystem({ world }: GameContext) {
-	const cooks = world.with("position", "order", "carry", "badge");
+	const cooks = world.with("position", "order", "carry", "control", "badge");
 
 	return () => {
 		for (const cook of cooks) {
@@ -11,17 +11,16 @@ export function createCookBadgeSystem({ world }: GameContext) {
 
 			const order = cook.order ?? null;
 			const item = cook.carry.item;
-			const progress = order
-				? `${order.placed.length}/${order.target.length}`
-				: "none";
-			const next = `${progress}|${item ?? "empty"}`;
+			const progress = cook.control.action?.progress ?? null;
+			const progressKey = progress === null ? "none" : progress.toFixed(2);
+			const next = `${order ? `${order.placed.length}/${order.target.length}` : "none"}|${item ?? "empty"}|${progressKey}`;
 
 			if (next === signature) {
 				continue;
 			}
 
 			cook.badge.signature = next;
-			drawCookBadge(cook.badge, order, item);
+			drawCookBadge(cook.badge, order, item, progress);
 		}
 	};
 }

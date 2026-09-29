@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	ACTION_DURATIONS_MS,
+	type ActionKind,
+	advanceAction,
 	canRequest,
 	createControlState,
 	type CookRequest,
+	isBusy,
 	isRequestSettled,
 	markActive,
+	startAction,
 } from "../src/config/control";
 import {
 	type CarryState,
@@ -38,17 +43,94 @@ const fetchOf = (ingredient: Ingredient): CookRequest => ({
 });
 
 describe("createControlState", () => {
-	it("по умолчанию auto, без запроса, idle сброшен", () => {
+	it("по умолчанию auto, без запроса и действия, idle сброшен", () => {
 		expect(createControlState()).toEqual({
 			mode: "auto",
 			request: null,
 			idleMs: 0,
+			action: null,
 		});
 	});
 
 	it("принимает режим", () => {
 		expect(createControlState("chat").mode).toBe("chat");
 		expect(createControlState("auto").mode).toBe("auto");
+	});
+});
+
+describe("работа у станции", () => {
+	it("стартует с нулевого прогресса", () => {
+		const control = createControlState("chat");
+		startAction(control, "take-ingredient");
+
+		expect(control.action).toEqual({ kind: "take-ingredient", progress: 0 });
+		expect(isBusy({ control })).toBe(true);
+	});
+
+	it("прогресс растёт пропорционально длительности действия", () => {
+		const control = createControlState("chat");
+		const duration = ACTION_DURATIONS_MS.sell;
+		startAction(control, "sell");
+
+		advanceAction(control, duration / 4);
+		expect(control.action?.progress).toBeCloseTo(0.25, 5);
+
+		advanceAction(control, duration / 4);
+		expect(control.action?.progress).toBeCloseTo(0.5, 5);
+	});
+
+	it("действие завершается ровно один раз и очищает прогресс", () => {
+		const control = createControlState("chat");
+		startAction(control, "place-ingredient");
+
+		expect(
+			advanceAction(control, ACTION_DURATIONS_MS["place-ingredient"]),
+		).toBe(true);
+		expect(control.action).toBeNull();
+		expect(isBusy({ control })).toBe(false);
+		expect(advanceAction(control, 1000)).toBe(false);
+	});
+
+	it("перелёт по времени всё равно завершает действие, а не зависает", () => {
+		const control = createControlState("chat");
+		startAction(control, "get-order");
+
+		advanceAction(control, ACTION_DURATIONS_MS["get-order"] * 10);
+
+		expect(control.action).toBeNull();
+	});
+
+	it("без действия advance ничего не делает", () => {
+		const control = createControlState("chat");
+
+		expect(advanceAction(control, 500)).toBe(false);
+		expect(control.action).toBeNull();
+	});
+
+	it.each(Object.keys(ACTION_DURATIONS_MS) as ActionKind[])(
+		"у действия %s положительная длительность",
+		(kind) => {
+			expect(ACTION_DURATIONS_MS[kind]).toBeGreaterThan(0);
+		},
+	);
+
+	it("повара нельзя дёрнуть новой командой, пока он работает", () => {
+		const order = createOrder(["bun", "cheese"]);
+		const cook = makeCook({ order });
+		startAction(cook.control, "take-ingredient");
+
+		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
+		expect(canRequest(TAKE, cook)).toBe(false);
+		expect(canRequest(DELIVER, cook)).toBe(false);
+	});
+
+	it("после завершения работы команды снова принимаются", () => {
+		const order = createOrder(["bun", "cheese"]);
+		const cook = makeCook({ order });
+		startAction(cook.control, "take-ingredient");
+		advanceAction(cook.control, ACTION_DURATIONS_MS["take-ingredient"]);
+
+		expect(canRequest(fetchOf("bun"), cook)).toBe(true);
 	});
 });
 
@@ -117,7 +199,7 @@ describe("canRequest: fetch", () => {
 
 	it("запрещён когда руки заняты", () => {
 		const order = createOrder(["bun"]);
-		const cook = makeCook({ order, carry: { item: "cheese", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "cheese" } });
 
 		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
 	});
@@ -149,7 +231,7 @@ describe("canRequest: deliver", () => {
 	it("запрещён когда руки заняты", () => {
 		const order = createOrder(["bun"]);
 		order.placed.push("bun");
-		const cook = makeCook({ order, carry: { item: "cheese", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "cheese" } });
 
 		expect(canRequest(DELIVER, cook)).toBe(false);
 	});
@@ -176,7 +258,7 @@ describe("isRequestSettled: fetch", () => {
 
 	it("не выполнен пока повар несёт ингредиент", () => {
 		const order = createOrder(["bun", "cheese"]);
-		const cook = makeCook({ order, carry: { item: "bun", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "bun" } });
 
 		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
 	});
@@ -196,7 +278,7 @@ describe("isRequestSettled: fetch", () => {
 
 	it("не выполнен если несёт что-то другое, а слой ещё впереди", () => {
 		const order = createOrder(["bun", "cheese"]);
-		const cook = makeCook({ order, carry: { item: "patty", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "patty" } });
 
 		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
 	});
@@ -206,7 +288,7 @@ describe("isRequestSettled: deliver", () => {
 	it("не выполнен пока несёт бургер", () => {
 		const order = createOrder(["bun"]);
 		order.placed.push("bun");
-		const cook = makeCook({ order, carry: { item: "burger", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "burger" } });
 
 		expect(isRequestSettled(DELIVER, cook)).toBe(false);
 	});
@@ -214,7 +296,7 @@ describe("isRequestSettled: deliver", () => {
 	it("не выполнен когда бургер отдан, но заказ ещё есть", () => {
 		const order = createOrder(["bun"]);
 		order.placed.push("bun");
-		const cook = makeCook({ order, carry: { item: "burger", cooldownMs: 0 } });
+		const cook = makeCook({ order, carry: { item: "burger" } });
 		cook.carry.item = null;
 
 		expect(isRequestSettled(DELIVER, cook)).toBe(false);

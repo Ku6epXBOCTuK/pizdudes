@@ -5,24 +5,32 @@ import type { Item, OrderState } from "../config/recipes";
 
 const LABEL_COLOR = 0xf2f4f8;
 const LABEL_FONT_SIZE = 12;
-const CARRY_FONT_SIZE = 16;
+const CARRY_FONT_SIZE = 14;
 const EMOJI_FONT =
 	'"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
 const DOT_RADIUS = 4;
-const DOT_SPACING = 13;
-const LABEL_OFFSET_Y = 0;
-const CARRY_OFFSET_Y = 20;
-const DOT_OFFSET_Y = 38;
+const DOT_SPACING = 12;
 const DOT_DONE_COLOR = 0xf5c542;
 const DOT_PENDING_COLOR = 0x7c8698;
 
-export const BADGE_OFFSET_Y = 62;
+const BAR_WIDTH = 46;
+const BAR_HEIGHT = 4;
+const BAR_TRACK_COLOR = 0x2a303c;
+const BAR_FILL_COLOR = 0xf5c542;
+
+const BAR_OFFSET_Y = 0;
+const ROW_OFFSET_Y = 14;
+const LABEL_OFFSET_Y = 30;
+const ROW_GAP = 6;
+
+export const BADGE_OFFSET_Y = 72;
 
 export interface CookBadge {
 	root: Container;
 	label: Text;
 	carry: Text;
 	dots: Graphics;
+	bar: Graphics;
 	signature: string;
 }
 
@@ -48,36 +56,68 @@ export function createCookBadge(name: string): CookBadge {
 			stroke: { color: 0x10131a, width: 3 },
 		},
 	});
-	carry.anchor.set(0.5);
-	carry.position.set(0, CARRY_OFFSET_Y);
+	carry.anchor.set(0, 0.5);
+	carry.position.set(0, ROW_OFFSET_Y);
 
 	const dots = new Graphics();
 
-	const root = new Container({ label: "cook-badge" });
-	root.addChild(label, carry, dots);
+	const bar = new Graphics();
 
-	return { root, label, carry, dots, signature: "" };
+	const root = new Container({ label: "cook-badge" });
+	root.addChild(bar, carry, dots, label);
+
+	return { root, label, carry, dots, bar, signature: "" };
 }
 
 export function drawCookBadge(
 	badge: CookBadge,
 	order: OrderState | null,
 	carried: Item | null,
+	progress: number | null,
 ) {
 	badge.carry.text = carryEmoji(carried);
 	badge.dots.clear();
+	badge.bar.clear();
+
+	drawBar(badge, progress);
 
 	if (!order) {
+		badge.carry.position.x = 0;
 		return;
 	}
 
 	const total = order.target.length;
 	const placed = order.placed.length;
-	const startX = -((total - 1) * DOT_SPACING) / 2;
+
+	// эмодзи слева от точек, вся строка центрируется по бейджу
+	const carryWidth = badge.carry.text ? badge.carry.width : 0;
+	const dotsWidth = (total - 1) * DOT_SPACING;
+	const gap = carryWidth ? ROW_GAP : 0;
+	const rowWidth = carryWidth + gap + dotsWidth;
+	const firstDot = -rowWidth / 2 + carryWidth + gap + DOT_SPACING / 2;
+
+	badge.carry.position.x = -rowWidth / 2;
 
 	for (let index = 0; index < total; index++) {
 		badge.dots
-			.circle(startX + index * DOT_SPACING, DOT_OFFSET_Y, DOT_RADIUS)
+			.circle(firstDot + index * DOT_SPACING, ROW_OFFSET_Y, DOT_RADIUS)
 			.fill(index < placed ? DOT_DONE_COLOR : DOT_PENDING_COLOR);
+	}
+}
+
+function drawBar(badge: CookBadge, progress: number | null) {
+	if (progress === null) {
+		return;
+	}
+
+	const left = -BAR_WIDTH / 2;
+	const filled = Math.max(0, Math.min(1, progress)) * BAR_WIDTH;
+
+	badge.bar
+		.rect(left, BAR_OFFSET_Y, BAR_WIDTH, BAR_HEIGHT)
+		.fill(BAR_TRACK_COLOR);
+
+	if (filled > 0) {
+		badge.bar.rect(left, BAR_OFFSET_Y, filled, BAR_HEIGHT).fill(BAR_FILL_COLOR);
 	}
 }

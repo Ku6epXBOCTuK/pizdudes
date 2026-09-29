@@ -168,15 +168,14 @@ describe("isOrderComplete", () => {
 });
 
 describe("createCarryState", () => {
-	it("руки пусты и без кулдауна", () => {
-		expect(createCarryState()).toEqual({ item: null, cooldownMs: 0 });
+	it("руки пусты", () => {
+		expect(createCarryState()).toEqual({ item: null });
 	});
 
 	it("каждый вызов даёт независимый объект", () => {
 		const first = createCarryState();
 		first.item = ITEM_BURGER;
-		first.cooldownMs = 500;
 
-		expect(createCarryState()).toEqual({ item: null, cooldownMs: 0 });
+		expect(createCarryState()).toEqual({ item: null });
 	});
 });
