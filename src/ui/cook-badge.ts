@@ -23,7 +23,7 @@ const ROW_GAP = 6;
 
 const BADGE_SIGNATURE_NONE = -1;
 const PROGRESS_NONE = 255;
-const PROGRESS_STEPS = 100;
+const PROGRESS_STEPS = 254;
 
 const ITEM_ORDER: (Item | null)[] = [
 	null,
@@ -44,16 +44,23 @@ export function badgeSignature(
 	order: OrderState | null,
 	carried: Item | null,
 	progress: number | null,
+	showNames: boolean,
 ): number {
 	const item = ITEM_CODE.get(carried) ?? 0;
-	const placed = order ? Math.min(99, order.placed.length) : 0;
-	const target = order ? Math.min(99, order.target.length) : 0;
+	const placed = order ? order.placed.length : 0;
+	const target = order ? order.target.length : 0;
 	const step =
 		progress === null
 			? PROGRESS_NONE
-			: Math.min(PROGRESS_STEPS - 1, Math.floor(progress * PROGRESS_STEPS));
+			: Math.min(PROGRESS_STEPS, Math.floor(progress * PROGRESS_STEPS));
 
-	return ((item * 100 + placed) * 100 + target) * 256 + step;
+	return (
+		(item << 25) |
+		(placed << 17) |
+		(target << 9) |
+		(step << 1) |
+		(showNames ? 1 : 0)
+	);
 }
 
 export const BADGE_OFFSET_Y = 72;
@@ -100,7 +107,10 @@ export function drawCookBadge(
 	order: OrderState | null,
 	carried: Item | null,
 	progress: number | null,
+	showNames: boolean,
 ) {
+	badge.label.visible = showNames;
+
 	const texture = carryTexture(carried);
 	badge.carry.visible = texture !== null;
 

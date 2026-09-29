@@ -13,7 +13,13 @@ import { createCarryState } from "../config/recipes";
 import { FLOOR_TILE_SCALE, FLOOR_TINT, SPRITE_SCALE } from "../constants";
 import type { GameAssets, GameContext } from "../shared/context";
 import { createCookBadge } from "../ui/cook-badge";
-import type { CookEntity, CookIdentity, Entity, Vector2 } from "./world";
+import type {
+	CookEntity,
+	CookIdentity,
+	Entity,
+	GlobalConfig,
+	Vector2,
+} from "./world";
 
 export interface Size {
 	width: number;
@@ -107,9 +113,24 @@ export function spawnCook(
 	return world.add(cook);
 }
 
+export function spawnGlobalConfig(world: World<Entity>): GlobalConfig {
+	const existing = world.with("config").first;
+
+	if (existing) {
+		return existing.config;
+	}
+
+	const config: GlobalConfig = { namesVisible: true };
+	world.add({ config });
+
+	return config;
+}
+
 export function spawnField(ctx: GameContext): TilingSprite {
 	const screen = ctx.app.screen;
 	const center = { x: screen.width / 2, y: screen.height / 2 };
+
+	spawnGlobalConfig(ctx.world);
 
 	const floor = spawnFloor(ctx.layers.background, ctx.assets.floor, screen);
 	spawnStations(ctx.world, ctx.assets, screen);

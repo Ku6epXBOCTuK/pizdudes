@@ -2,12 +2,14 @@ export type DevCommand =
 	| { kind: "spawn-bots"; count: number }
 	| { kind: "clear-bots" }
 	| { kind: "report-count" }
-	| { kind: "report-stats" };
+	| { kind: "report-stats" }
+	| { kind: "toggle-names" };
 
 const COMMAND_SPAWN = "!тест";
 const COMMAND_CLEAR = "!сброс";
 const COMMAND_COUNT = "!счет";
 const COMMAND_STATS = "!статс";
+const COMMAND_NAMES = "!имена";
 
 export function parseDevCommand(text: string): DevCommand | null {
 	const message = text.trim().toLowerCase().replace(/ё/g, "е");
@@ -33,6 +35,9 @@ export function parseDevCommand(text: string): DevCommand | null {
 
 		case COMMAND_STATS:
 			return { kind: "report-stats" };
+
+		case COMMAND_NAMES:
+			return { kind: "toggle-names" };
 
 		default:
 			return null;

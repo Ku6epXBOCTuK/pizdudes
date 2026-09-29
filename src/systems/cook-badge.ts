@@ -7,8 +7,11 @@ import type { GameContext } from "../shared/context";
 
 export function createCookBadgeSystem({ world }: GameContext) {
 	const cooks = world.with("position", "order", "carry", "control", "badge");
+	const configs = world.with("config");
 
 	return () => {
+		const showNames = configs.first?.config.namesVisible ?? true;
+
 		for (const cook of cooks) {
 			const { root, signature } = cook.badge;
 			root.position.set(cook.position.x, cook.position.y - BADGE_OFFSET_Y);
@@ -17,14 +20,14 @@ export function createCookBadgeSystem({ world }: GameContext) {
 			const item = cook.carry.item;
 			const progress = cook.control.action?.progress ?? null;
 
-			const next = badgeSignature(order, item, progress);
+			const next = badgeSignature(order, item, progress, showNames);
 
 			if (next === signature) {
 				continue;
 			}
 
 			cook.badge.signature = next;
-			drawCookBadge(cook.badge, order, item, progress);
+			drawCookBadge(cook.badge, order, item, progress, showNames);
 		}
 	};
 }

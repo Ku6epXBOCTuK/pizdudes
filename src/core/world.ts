@@ -20,6 +20,10 @@ export interface CookIdentity {
 	name: string;
 }
 
+export interface GlobalConfig {
+	namesVisible: boolean;
+}
+
 export type Entity = Partial<{
 	id: string;
 	name: string;
@@ -38,6 +42,7 @@ export type Entity = Partial<{
 	approach: Vector2;
 	animated: true;
 	playerTag: true;
+	config: GlobalConfig;
 }>;
 
 export type CookEntity = With<

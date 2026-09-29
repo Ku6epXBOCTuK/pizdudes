@@ -2,9 +2,9 @@ import { DEV_SPAWN } from "../config/dev-spawn";
 import { randomSpawnPoint } from "../config/field";
 import { GameEngine, GameEvents } from "../core/event-bus";
 import { spawnCook } from "../core/spawn";
-import type { DevCommand } from "../twitch/dev-commands";
 import type { Entity } from "../core/world";
 import type { GameContext } from "../shared/context";
+import type { DevCommand } from "../twitch/dev-commands";
 
 export const BOT_ID_PREFIX = "bot:";
 
@@ -45,6 +45,7 @@ export interface DevSpawnController {
 	clearQueue(): void;
 	stats(): DevSpawnStats;
 	consume(dt: number): void;
+	toggleNames(): void;
 }
 
 function isBot(cook: Entity): boolean {
@@ -156,7 +157,26 @@ export function createDevSpawnSystem(
 		}
 	}
 
-	return { enqueue, clearQueue, stats, consume };
+	function toggleNames() {
+		const config = world.with("config").first;
+
+		if (!config) {
+			return;
+		}
+
+		config.config.namesVisible = !config.config.namesVisible;
+		console.info(
+			`[dev] имена ${config.config.namesVisible ? "включены" : "выключены"}`,
+		);
+	}
+
+	return {
+		enqueue,
+		clearQueue,
+		stats,
+		consume,
+		toggleNames,
+	};
 }
 
 export function createDevSpawnRuntime(
@@ -205,6 +225,9 @@ export function createDevSpawnRuntime(
 						`FPS ${ctx.app.ticker.FPS.toFixed(1)}, худший кадр ${worstFrameMs.toFixed(1)}мс`,
 				);
 				worstFrameMs = 0;
+				return;
+			case "toggle-names":
+				controller.toggleNames();
 		}
 	}
 
