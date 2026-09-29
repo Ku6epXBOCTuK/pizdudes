@@ -10,6 +10,10 @@ import type { GameAssets, GameContext } from "../shared/context";
 import { createAnimationSystem } from "../systems/animation";
 import { createCookBadgeSystem } from "../systems/cook-badge";
 import { createCookCommandsSystem } from "../systems/cook-commands";
+import {
+	createDevCommandsSystem,
+	type DevCommandsOptions,
+} from "../systems/dev-commands";
 import { createMarqueeSystem } from "../systems/marquee";
 import { createMovementSystem } from "../systems/movement";
 import { createOrderAiSystem } from "../systems/order-ai";
@@ -23,32 +27,38 @@ type System = ((dt: number) => void) & { dispose?: () => void };
 type SystemFactory = (ctx: GameContext) => System;
 type SystemGroup = { name: string; factories: SystemFactory[] };
 
-const SYSTEM_GROUPS: SystemGroup[] = [
-	{
-		name: "ai",
-		factories: [createOrderAiSystem],
-	},
-	{
-		name: "order",
-		factories: [createOrderAssemblySystem, createCookCommandsSystem],
-	},
-	{
-		name: "physics",
-		factories: [createMovementSystem],
-	},
-	{
-		name: "animation",
-		factories: [createAnimationSystem],
-	},
-	{
-		name: "render",
-		factories: [createRenderSystem],
-	},
-	{
-		name: "ui",
-		factories: [createCookBadgeSystem, createMarqueeSystem],
-	},
-];
+function systemGroups(devOptions: DevCommandsOptions): SystemGroup[] {
+	return [
+		{
+			name: "ai",
+			factories: [createOrderAiSystem],
+		},
+		{
+			name: "order",
+			factories: [createOrderAssemblySystem, createCookCommandsSystem],
+		},
+		{
+			name: "dev",
+			factories: [(ctx) => createDevCommandsSystem(ctx, devOptions)],
+		},
+		{
+			name: "physics",
+			factories: [createMovementSystem],
+		},
+		{
+			name: "animation",
+			factories: [createAnimationSystem],
+		},
+		{
+			name: "render",
+			factories: [createRenderSystem],
+		},
+		{
+			name: "ui",
+			factories: [createCookBadgeSystem, createMarqueeSystem],
+		},
+	];
+}
 
 async function loadInitialTextures(): Promise<GameAssets> {
 	const [cookSheet, floor, stations] = await Promise.all([
@@ -60,7 +70,11 @@ async function loadInitialTextures(): Promise<GameAssets> {
 	return { cookSheet, floor, stations };
 }
 
-export async function bootstrapGame(app: Application, layers: Layers) {
+export async function bootstrapGame(
+	app: Application,
+	layers: Layers,
+	devOptions: DevCommandsOptions = { ownerId: null },
+) {
 	const assets = await loadInitialTextures();
 
 	const world = new World<Entity>();
@@ -72,7 +86,7 @@ export async function bootstrapGame(app: Application, layers: Layers) {
 		eventBus: GameEngine,
 	};
 
-	const groups = SYSTEM_GROUPS.map((group) =>
+	const groups = systemGroups(devOptions).map((group) =>
 		group.factories.map((factory) => factory(ctx)),
 	);
 

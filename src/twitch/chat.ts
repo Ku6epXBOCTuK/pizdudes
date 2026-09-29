@@ -4,6 +4,7 @@ import type { CookRequest } from "../config/control";
 import type { CookIdentity } from "../core/world";
 import { parseCommand } from "./commands";
 import type { TwitchConfig } from "./config";
+import { type DevCommand, parseDevCommand } from "./dev-commands";
 
 export interface TwitchChat {
 	connect(): void;
@@ -15,6 +16,7 @@ export interface TwitchChat {
 export interface TwitchMessage {
 	cook: CookIdentity;
 	request: CookRequest | null;
+	dev: DevCommand | null;
 }
 
 export function createTwitchChat(
@@ -57,9 +59,10 @@ export function createTwitchChat(
 	});
 
 	client.onMessage((_channel, author, text, message) => {
-		const request = parseCommand(text);
+		const dev = parseDevCommand(text);
+		const request = dev ? null : parseCommand(text);
 
-		if (!request) {
+		if (!request && !dev) {
 			console.debug(`[twitch] ${author}: ${text}`);
 		}
 
@@ -69,6 +72,7 @@ export function createTwitchChat(
 				name: message.userInfo.displayName,
 			},
 			request,
+			dev,
 		});
 	});
 

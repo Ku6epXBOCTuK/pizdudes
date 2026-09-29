@@ -1,9 +1,11 @@
 import type { CookRequest } from "../config/control";
+import type { DevCommand } from "../twitch/dev-commands";
 import type { CookIdentity } from "./world";
 
 export interface ChatRequestEvent {
 	cook: CookIdentity;
 	request?: CookRequest | null;
+	dev?: DevCommand | null;
 }
 
 const START_GAME = Symbol("start-game");

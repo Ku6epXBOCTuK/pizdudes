@@ -31,10 +31,11 @@ const INGREDIENT_ALIASES: Record<string, Ingredient> = {
 
 const COMMAND_TAKE = "!взять";
 const COMMAND_PLACE = "!положи";
+const COMMAND_PLACE_ALT = "!положить";
 const COMMAND_DELIVER = "!отдать";
 
 export function parseCommand(text: string): CookRequest | null {
-	const message = text.trim().toLowerCase();
+	const message = text.trim().toLowerCase().replace(/ё/g, "е");
 	const [word = "", ...rest] = message.split(/\s+/);
 
 	switch (word) {
@@ -44,7 +45,8 @@ export function parseCommand(text: string): CookRequest | null {
 		case COMMAND_DELIVER:
 			return { kind: "deliver" };
 
-		case COMMAND_PLACE: {
+		case COMMAND_PLACE:
+		case COMMAND_PLACE_ALT: {
 			const ingredient = INGREDIENT_ALIASES[rest.join(" ")];
 			return ingredient ? { kind: "fetch", ingredient } : null;
 		}

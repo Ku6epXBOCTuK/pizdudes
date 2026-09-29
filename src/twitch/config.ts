@@ -1,5 +1,6 @@
 export interface TwitchConfig {
 	channel: string;
+	ownerId: string | null;
 }
 
 export function readTwitchConfig(
@@ -11,5 +12,8 @@ export function readTwitchConfig(
 		return null;
 	}
 
-	return { channel };
+	return {
+		channel,
+		ownerId: env.VITE_TWITCH_OWNER_ID?.trim() || null,
+	};
 }
