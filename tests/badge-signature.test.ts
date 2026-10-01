@@ -72,4 +72,17 @@ describe("badgeSignature", () => {
 			badgeSignature(order, "bun", 0.5, false),
 		);
 	});
+
+	it("заказы разных блюд с одинаковым числом слоёв дают разные подписи", () => {
+		const first = createOrder(RECIPE);
+		const second = createOrder({
+			...RECIPE,
+			id: "other-recipe",
+			name: "Другой",
+		});
+
+		expect(badgeSignature(first, null, null, true)).not.toBe(
+			badgeSignature(second, null, null, true),
+		);
+	});
 });

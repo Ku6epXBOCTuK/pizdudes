@@ -43,6 +43,7 @@ function badge(): CookBadge {
 	return {
 		root: { position: { set() {} } },
 		label: { visible: true },
+		dish: { visible: false, text: "" },
 		carry: { visible: false, position: { x: 0 } },
 		dots: graphics(),
 		bar: graphics(),
@@ -118,6 +119,20 @@ describe("config в системе бейджей", () => {
 
 		expect(second).toBe(first);
 		expect([...world].filter((e) => e.config).length).toBe(1);
+	});
+
+	it("название блюда показывается, пока заказ активен", () => {
+		const { world, cook } = worldWithCook();
+		spawnGlobalConfig(world);
+		const system = createCookBadgeSystem({ world } as never);
+
+		system();
+		expect(cook.badge?.dish.visible).toBe(true);
+		expect(cook.badge?.dish.text).toBe(TEST_RECIPE.name);
+
+		cook.order = null;
+		system();
+		expect(cook.badge?.dish.visible).toBe(false);
 	});
 
 	it("флаги разных config не путаются между поварами", () => {

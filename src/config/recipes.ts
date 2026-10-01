@@ -171,7 +171,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "burger-bacon",
-		name: "С беконом",
+		name: "Бургер с беконом",
 		dish: "dish-burger",
 		layers: ["bun", "patty", "crispy-bacon", "cheese", "chopped-onion", "bun"],
 		order: "layered",
@@ -179,7 +179,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "burger-double",
-		name: "Двойной",
+		name: "Двойной бургер",
 		dish: "dish-burger",
 		layers: ["bun", "patty", "cheese", "patty", "chopped-onion", "bun"],
 		order: "layered",
@@ -187,7 +187,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "burger-chicken",
-		name: "Куриный",
+		name: "Бургер с курицей",
 		dish: "dish-burger",
 		layers: ["bun", "fried-chicken", "chopped-lettuce", "tomato-sauce", "bun"],
 		order: "layered",
@@ -195,7 +195,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "burger-mushroom",
-		name: "С грибами",
+		name: "Бургер с грибами",
 		dish: "dish-burger",
 		layers: [
 			"bun",
@@ -210,7 +210,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pizza-margherita",
-		name: "Маргарита",
+		name: "Пицца Маргарита",
 		dish: "dish-pizza",
 		layers: ["pizza-base", "tomato-sauce", "cheese", "chopped-tomato"],
 		order: "layered",
@@ -218,7 +218,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pizza-pepperoni",
-		name: "Пепперони",
+		name: "Пицца Пепперони",
 		dish: "dish-pizza",
 		layers: ["pizza-base", "tomato-sauce", "cheese", "fried-sausage", "cheese"],
 		order: "layered",
@@ -226,7 +226,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pizza-mushroom",
-		name: "Грибная",
+		name: "Пицца грибная",
 		dish: "dish-pizza",
 		layers: [
 			"pizza-base",
@@ -240,7 +240,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pizza-chicken",
-		name: "Куриная",
+		name: "Пицца с курицей",
 		dish: "dish-pizza",
 		layers: [
 			"pizza-base",
@@ -254,7 +254,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pizza-veggie",
-		name: "Овощная",
+		name: "Пицца овощная",
 		dish: "dish-pizza",
 		layers: [
 			"pizza-base",
@@ -269,7 +269,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "hotdog-classic",
-		name: "Классический",
+		name: "Хот-дог классический",
 		dish: "dish-hotdog",
 		layers: ["bun", "fried-sausage", "chopped-onion", "chopped-cucumber"],
 		order: "layered",
@@ -285,7 +285,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "hotdog-cheese",
-		name: "Сырный",
+		name: "Хот-дог с сыром",
 		dish: "dish-hotdog",
 		layers: [
 			"bun",
@@ -299,7 +299,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-tomato",
-		name: "Томатный",
+		name: "Суп томатный",
 		dish: "dish-soup",
 		layers: ["chopped-tomato", "hot-broth", "cream", "chopped-onion"],
 		order: "assorted",
@@ -307,7 +307,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-potato",
-		name: "Картофельный",
+		name: "Суп картофельный",
 		dish: "dish-soup",
 		layers: ["chopped-potato", "chopped-carrot", "chopped-onion", "hot-broth"],
 		order: "assorted",
@@ -315,7 +315,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-chicken",
-		name: "Куриный",
+		name: "Суп куриный",
 		dish: "dish-soup",
 		layers: ["chopped-potato", "chopped-carrot", "fried-chicken", "hot-broth"],
 		order: "assorted",
@@ -323,7 +323,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-mushroom",
-		name: "Грибной",
+		name: "Суп грибной",
 		dish: "dish-soup",
 		layers: ["chopped-mushrooms", "chopped-onion", "cream", "hot-broth"],
 		order: "assorted",
@@ -331,7 +331,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-corn",
-		name: "Кукурузный",
+		name: "Суп кукурузный",
 		dish: "dish-soup",
 		layers: ["chopped-corn", "chopped-potato", "cream", "hot-broth"],
 		order: "assorted",
@@ -339,7 +339,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "soup-bean",
-		name: "Фасольный",
+		name: "Суп фасолевый",
 		dish: "dish-soup",
 		layers: [
 			"beans",
@@ -353,7 +353,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "salad-veggie",
-		name: "Овощной",
+		name: "Салат овощной",
 		dish: "dish-salad",
 		layers: [
 			"chopped-lettuce",
@@ -367,7 +367,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "salad-caesar",
-		name: "Цезарь",
+		name: "Салат Цезарь",
 		dish: "dish-salad",
 		layers: [
 			"chopped-lettuce",
@@ -381,7 +381,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "salad-greek",
-		name: "Греческий",
+		name: "Салат греческий",
 		dish: "dish-salad",
 		layers: [
 			"chopped-tomato",
@@ -395,7 +395,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "salad-corn",
-		name: "Кукурузный",
+		name: "Салат кукурузный",
 		dish: "dish-salad",
 		layers: [
 			"chopped-lettuce",
@@ -409,7 +409,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "salad-egg",
-		name: "С яйцом",
+		name: "Салат с яйцом",
 		dish: "dish-salad",
 		layers: [
 			"chopped-lettuce",
@@ -423,7 +423,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pasta-tomato",
-		name: "Паста с соусом",
+		name: "Паста с томатным соусом",
 		dish: "dish-pasta",
 		layers: ["pasta", "tomato-sauce", "chopped-mushrooms", "cheese"],
 		order: "layered",
@@ -431,7 +431,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "pasta-cream",
-		name: "Со сливками",
+		name: "Паста со сливками",
 		dish: "dish-pasta",
 		layers: ["pasta", "cream", "cheese", "fried-chicken"],
 		order: "layered",
@@ -461,7 +461,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "sandwich-chicken",
-		name: "С курицей",
+		name: "Сэндвич с курицей",
 		dish: "dish-sandwich",
 		layers: ["toast", "fried-chicken", "chopped-lettuce", "tomato-sauce"],
 		order: "layered",
@@ -469,7 +469,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "sandwich-bacon",
-		name: "С беконом",
+		name: "Сэндвич с беконом",
 		dish: "dish-sandwich",
 		layers: ["toast", "crispy-bacon", "cheese", "chopped-tomato"],
 		order: "layered",
@@ -477,7 +477,7 @@ export const DISH_RECIPES: DishRecipe[] = [
 	},
 	{
 		id: "sandwich-baguette",
-		name: "Куриный на багете",
+		name: "Сэндвич с курицей на багете",
 		dish: "dish-sandwich",
 		layers: ["baguette", "fried-chicken", "cheese", "chopped-tomato"],
 		order: "layered",

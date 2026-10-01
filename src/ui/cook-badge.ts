@@ -16,6 +16,9 @@ const BAR_HEIGHT = 4;
 const BAR_TRACK_COLOR = 0x2a303c;
 const BAR_FILL_COLOR = 0xf5c542;
 
+const DISH_OFFSET_Y = -16;
+const DISH_COLOR = 0xffe08a;
+const DISH_FONT_SIZE = 11;
 const BAR_OFFSET_Y = 0;
 const ROW_OFFSET_Y = 14;
 const LABEL_OFFSET_Y = 30;
@@ -29,11 +32,14 @@ export function badgeSignature(
 	progress: number | null,
 	showNames: boolean,
 ): string {
+	const recipe = order ? order.recipe.id : "";
 	const placed = order ? order.placed.length : 0;
 	const target = order ? order.recipe.layers.length : 0;
 	const step = progress === null ? "" : progress.toFixed(3);
 
-	return [carried ?? "", placed, target, step, showNames ? 1 : 0].join("|");
+	return [recipe, carried ?? "", placed, target, step, showNames ? 1 : 0].join(
+		"|",
+	);
 }
 
 export const BADGE_OFFSET_Y = 72;
@@ -41,6 +47,7 @@ export const BADGE_OFFSET_Y = 72;
 export interface CookBadge {
 	root: Container;
 	label: Text;
+	dish: Text;
 	carry: Sprite;
 	dots: Graphics;
 	bar: Graphics;
@@ -60,6 +67,19 @@ export function createCookBadge(name: string): CookBadge {
 	label.anchor.set(0.5);
 	label.position.set(0, LABEL_OFFSET_Y);
 
+	const dish = new Text({
+		text: "",
+		style: {
+			fill: DISH_COLOR,
+			fontSize: DISH_FONT_SIZE,
+			fontFamily: "Verdana, sans-serif",
+			stroke: { color: 0x10131a, width: 3 },
+		},
+	});
+	dish.anchor.set(0.5);
+	dish.position.set(0, DISH_OFFSET_Y);
+	dish.visible = false;
+
 	const carry = new Sprite();
 	carry.anchor.set(0, 0.5);
 	carry.position.set(0, ROW_OFFSET_Y);
@@ -70,9 +90,17 @@ export function createCookBadge(name: string): CookBadge {
 	const bar = new Graphics();
 
 	const root = new Container({ label: "cook-badge" });
-	root.addChild(bar, carry, dots, label);
+	root.addChild(bar, carry, dots, dish, label);
 
-	return { root, label, carry, dots, bar, signature: BADGE_SIGNATURE_NONE };
+	return {
+		root,
+		label,
+		dish,
+		carry,
+		dots,
+		bar,
+		signature: BADGE_SIGNATURE_NONE,
+	};
 }
 
 export function drawCookBadge(
@@ -83,6 +111,11 @@ export function drawCookBadge(
 	showNames: boolean,
 ) {
 	badge.label.visible = showNames;
+	badge.dish.visible = order !== null;
+
+	if (order) {
+		badge.dish.text = order.recipe.name;
+	}
 
 	const texture = carryTexture(carried);
 	badge.carry.visible = texture !== null;
