@@ -12,8 +12,11 @@ import {
 	createControlState,
 	type CookRequest,
 } from "../src/config/control";
-import type { Entity, TargetState, Vector2 } from "../src/core/world";
-import { createOrderAiSystem } from "../src/systems/order-ai";
+import type { StationType } from "../src/assets/stations";
+import type { Entity, Vector2 } from "../src/core/world";
+import { createCookSteeringSystem } from "../src/systems/cook-steering";
+import { createCookTargetingSystem } from "../src/systems/cook-targeting";
+import { createCookWanderSystem } from "../src/systems/cook-wander";
 import { createOrderAssemblySystem } from "../src/systems/order-assembly";
 import {
 	AGENT_SPEED,
@@ -97,20 +100,20 @@ function harness(
 		world.add(cook);
 	}
 
-	const ai = createOrderAiSystem(
-		{
-			world,
-			app: { screen: SCREEN },
-		} as never,
-		random,
-	);
-	const assembly = createOrderAssemblySystem({
+	const ctx = {
 		world,
 		app: { screen: SCREEN },
-	} as never);
+	} as never;
+
+	const targeting = createCookTargetingSystem(ctx, random);
+	const steering = createCookSteeringSystem(ctx);
+	const wander = createCookWanderSystem(ctx, random);
+	const assembly = createOrderAssemblySystem(ctx);
 
 	const tick = () => {
-		ai(Math.min(FRAME, MAX_FRAME_MS));
+		targeting(Math.min(FRAME, MAX_FRAME_MS));
+		steering();
+		wander();
 		assembly(Math.min(FRAME, MAX_FRAME_MS));
 		for (const cook of world) {
 			if (cook.position && cook.velocity) {
@@ -142,11 +145,8 @@ function speedOf(cook: Entity) {
 }
 
 function typeOf(cook: Entity): StationType | null {
-	const target = cook.target as TargetState | null;
-	return target ? target.type : null;
+	return cook.target?.stationType ?? null;
 }
-
-type StationType = NonNullable<Entity["target"]>["type"];
 
 describe("навигация в auto-режиме", () => {
 	let h: Harness;

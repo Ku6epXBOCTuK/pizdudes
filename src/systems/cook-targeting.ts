@@ -1,10 +1,4 @@
-import type { With } from "miniplex";
 import type { StationType } from "../assets/stations";
-import { moveToward } from "../core/navigation";
-import { randomWanderPoint } from "../config/field";
-import { stationFinder } from "../core/stations";
-import type { Entity, Vector2 } from "../core/world";
-import { WANDER_SPEED } from "../constants";
 import {
 	type ControlState,
 	isRequestSettled,
@@ -21,14 +15,8 @@ import {
 	type OrderState,
 	SERVING_COUNTER,
 } from "../config/recipes";
+import { stationFinder } from "../core/stations";
 import type { GameContext } from "../shared/context";
-
-const WANDER_ARRIVE_DISTANCE = 24;
-
-type Cook = With<
-	Entity,
-	"position" | "velocity" | "carry" | "order" | "target" | "control" | "wander"
->;
 
 function requestedType(
 	item: Item | null,
@@ -72,35 +60,11 @@ function nextTargetType(
 	return needed ? INGREDIENT_STATIONS[needed] : undefined;
 }
 
-function walkTo(cook: Cook, point: Vector2) {
-	const dx = point.x - cook.position.x;
-	const dy = point.y - cook.position.y;
-	const dist = Math.sqrt(dx * dx + dy * dy);
-
-	if (dist <= WANDER_ARRIVE_DISTANCE) {
-		cook.velocity.x = 0;
-		cook.velocity.y = 0;
-		return true;
-	}
-
-	cook.velocity.x = (dx / dist) * WANDER_SPEED;
-	cook.velocity.y = (dy / dist) * WANDER_SPEED;
-	return false;
-}
-
-export function createOrderAiSystem(
-	{ app, world }: GameContext,
+export function createCookTargetingSystem(
+	{ world }: GameContext,
 	random: () => number = Math.random,
 ) {
-	const cooks = world.with(
-		"position",
-		"velocity",
-		"carry",
-		"order",
-		"target",
-		"control",
-		"wander",
-	);
+	const cooks = world.with("carry", "order", "target", "control", "wander");
 	const stations = stationFinder(world);
 
 	return (dt: number) => {
@@ -110,8 +74,6 @@ export function createOrderAiSystem(
 			if (control.action) {
 				markActive(control);
 				cook.wander = null;
-				cook.velocity.x = 0;
-				cook.velocity.y = 0;
 				continue;
 			}
 
@@ -131,32 +93,11 @@ export function createOrderAiSystem(
 			const type = nextTargetType(cook.carry.item, cook.order, control);
 			const station = type ? stations.byType(type) : undefined;
 
-			if (type && station) {
+			if (station) {
 				cook.wander = null;
-				cook.target = { type, position: { ...station.approach } };
-				moveToward(cook, station.approach);
-				continue;
-			}
-
-			cook.target = null;
-
-			const mayWander =
-				control.mode === "chat" && control.idleMs >= control.idleGoalMs;
-
-			if (!mayWander) {
-				cook.velocity.x = 0;
-				cook.velocity.y = 0;
-				continue;
-			}
-
-			if (!cook.wander) {
-				cook.wander = randomWanderPoint(app.screen, random);
-			}
-
-			if (walkTo(cook, cook.wander)) {
-				cook.wander = null;
-				control.idleMs = 0;
-				control.idleGoalMs = rollIdleGoalMs(random);
+				cook.target = station;
+			} else {
+				cook.target = null;
 			}
 		}
 	};

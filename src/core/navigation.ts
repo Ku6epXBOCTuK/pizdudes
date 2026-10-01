@@ -11,22 +11,28 @@ export function hasArrived(agent: Positioned): boolean {
 		return false;
 	}
 
-	return distance(agent.target.position, agent.position) <= AI_ARRIVE_DISTANCE;
+	return distance(agent.target.approach, agent.position) <= AI_ARRIVE_DISTANCE;
 }
 
-export function moveToward(agent: Mover, point: Vector2) {
+export function moveToward(
+	agent: Mover,
+	point: Vector2,
+	speed: number = AGENT_SPEED,
+	arriveDistance: number = AI_ARRIVE_DISTANCE,
+): boolean {
 	const dx = point.x - agent.position.x;
 	const dy = point.y - agent.position.y;
 	const dist = Math.sqrt(dx * dx + dy * dy);
 
-	if (dist <= AI_ARRIVE_DISTANCE) {
+	if (dist <= arriveDistance) {
 		agent.velocity.x = 0;
 		agent.velocity.y = 0;
-		return;
+		return true;
 	}
 
-	agent.velocity.x = (dx / dist) * AGENT_SPEED;
-	agent.velocity.y = (dy / dist) * AGENT_SPEED;
+	agent.velocity.x = (dx / dist) * speed;
+	agent.velocity.y = (dy / dist) * speed;
+	return false;
 }
 
 export function distance(a: Vector2, b: Vector2): number {

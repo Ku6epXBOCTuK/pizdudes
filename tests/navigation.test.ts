@@ -10,12 +10,19 @@ function agent(position: Vector2, at: Vector2 | null = null) {
 	return {
 		position,
 		velocity: { x: 0, y: 0 },
-		target: at ? { type: STATION, position: at } : null,
+		target: at
+			? {
+					position: at,
+					approach: at,
+					stationTag: true as const,
+					stationType: STATION,
+				}
+			: null,
 	};
 }
 
 function target(cook: ReturnType<typeof agent>): Vector2 | null {
-	return cook.target ? cook.target.position : null;
+	return cook.target ? cook.target.approach : null;
 }
 
 describe("moveToward", () => {

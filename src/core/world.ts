@@ -10,10 +10,10 @@ export interface Vector2 {
 	y: number;
 }
 
-export interface TargetState {
-	type: StationType;
-	position: Vector2;
-}
+export type StationEntity = With<
+	Entity,
+	"position" | "stationTag" | "stationType" | "approach"
+>;
 
 export interface CookIdentity {
 	userId: string;
@@ -33,7 +33,7 @@ export type Entity = Partial<{
 	order: OrderState | null;
 	carry: CarryState;
 	control: ControlState;
-	target: TargetState | null;
+	target: StationEntity | null;
 	wander: Vector2 | null;
 	view: Sprite;
 	badge: CookBadge;

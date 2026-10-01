@@ -15,9 +15,11 @@ import {
 	createDevSpawnSystem,
 	type DevCommandsOptions,
 } from "../systems/dev-spawn";
+import { createCookSteeringSystem } from "../systems/cook-steering";
+import { createCookTargetingSystem } from "../systems/cook-targeting";
+import { createCookWanderSystem } from "../systems/cook-wander";
 import { createMarqueeSystem } from "../systems/marquee";
 import { createMovementSystem } from "../systems/movement";
-import { createOrderAiSystem } from "../systems/order-ai";
 import { createOrderAssemblySystem } from "../systems/order-assembly";
 import { createRenderSystem } from "../systems/render";
 import { GameEngine, GameEvents } from "./event-bus";
@@ -36,7 +38,11 @@ function systemGroups(devOptions: DevCommandsOptions): SystemGroup[] {
 		},
 		{
 			name: "ai",
-			factories: [createOrderAiSystem],
+			factories: [createCookTargetingSystem],
+		},
+		{
+			name: "steering",
+			factories: [createCookSteeringSystem, createCookWanderSystem],
 		},
 		{
 			name: "order",

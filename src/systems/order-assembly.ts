@@ -124,7 +124,7 @@ export function createOrderAssemblySystem({ world }: GameContext) {
 				continue;
 			}
 
-			const plan = planAction(cook.target.type, cook);
+			const plan = planAction(cook.target.stationType, cook);
 
 			if (plan) {
 				startAction(cook.control, plan.kind, plan.item);
