@@ -13,3 +13,10 @@
 
 - [ ] ошибка при открытых dev tools "Uncaught Error: Ячейка h8 не помещается в
       сетку 20x7"
+
+- [ ] Дорисовать/найти иконки блюд для бейджа (в сете YEET их нет): **пицца,
+      хотдог, салат, паста, сэндвич, брускета**. Стиль — как в `assets/food/`
+      (из https://2yeet.itch.io/foodassets), размер 32×32. После добавления —
+      дописать в `src/config/item-icons.ts` (`dish-pizza`, `dish-hotdog`,
+      `dish-salad`, `dish-pasta`, `dish-sandwich`, `dish-bruschetta`) и
+      подключить `ITEM_ICONS` в бейдж вместо эмодзи.
