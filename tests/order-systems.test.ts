@@ -12,11 +12,7 @@ import {
 	createOrder,
 	type Item,
 } from "../src/config/recipes";
-import {
-	ACTION_DURATIONS_MS,
-	createControlState,
-	type CookRequest,
-} from "../src/config/control";
+import { createControlState, type CookRequest } from "../src/config/control";
 import type { StationType } from "../src/assets/stations";
 import type { Entity, Vector2 } from "../src/core/world";
 import { createCookSteeringSystem } from "../src/systems/cook-steering";
@@ -586,7 +582,7 @@ describe("пауза при работе со станцией", () => {
 		const c = cookOf(h, "house");
 
 		firstAction(h);
-		const duration = ACTION_DURATIONS_MS["get-order"] / 1000;
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
 		expect(c.control?.action?.progress ?? 1).toBeLessThan(0.3);
 
@@ -660,12 +656,13 @@ describe("пауза при работе со станцией", () => {
 
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("take-burger");
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
-		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.5);
+		h.step(duration * 0.5);
 		expect(c.carry?.item).toBeNull();
 		expect(c.control?.action?.kind).toBe("take-burger");
 
-		h.step((ACTION_DURATIONS_MS["take-burger"] / 1000) * 0.6);
+		h.step(duration * 0.6);
 		expect(c.carry?.item).toBe("burger");
 		expect(c.control?.action).toBeNull();
 	});
@@ -678,12 +675,13 @@ describe("пауза при работе со станцией", () => {
 
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("place-ingredient");
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
-		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.5);
+		h.step(duration * 0.5);
 		expect(c.carry?.item).toBe("bun");
 		expect(c.order?.placed).toEqual([]);
 
-		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 0.6);
+		h.step(duration * 0.6);
 		expect(c.carry?.item).toBeNull();
 		expect(c.order?.placed).toEqual(["bun"]);
 	});
@@ -696,11 +694,12 @@ describe("пауза при работе со станцией", () => {
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("get-order");
 		expect(c.order).toBeNull();
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
-		h.step((ACTION_DURATIONS_MS["get-order"] / 1000) * 0.5);
+		h.step(duration * 0.5);
 		expect(c.order).toBeNull();
 
-		h.step((ACTION_DURATIONS_MS["get-order"] / 1000) * 0.6);
+		h.step(duration * 0.6);
 		expect(c.order).not.toBeNull();
 		expect(c.order?.placed).toEqual([]);
 	});
@@ -718,12 +717,13 @@ describe("пауза при работе со станцией", () => {
 
 		firstAction(h);
 		expect(c.control?.action?.kind).toBe("sell");
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
-		h.step((ACTION_DURATIONS_MS.sell / 1000) * 0.5);
+		h.step(duration * 0.5);
 		expect(c.carry?.item).toBe("burger");
 		expect(c.order).not.toBeNull();
 
-		h.step((ACTION_DURATIONS_MS.sell / 1000) * 0.6);
+		h.step(duration * 0.6);
 		expect(c.carry?.item).toBeNull();
 		expect(c.order).toBeNull();
 	});
@@ -736,8 +736,9 @@ describe("пауза при работе со станцией", () => {
 
 		firstAction(h);
 		expect(c.control?.action?.item).toBe("bun");
+		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
-		h.step((ACTION_DURATIONS_MS["place-ingredient"] / 1000) * 1.2);
+		h.step(duration * 1.2);
 		expect(c.order?.placed).toEqual(["bun"]);
 	});
 });

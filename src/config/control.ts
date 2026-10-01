@@ -3,6 +3,7 @@ import {
 	type CarryState,
 	type Ingredient,
 	isOrderComplete,
+	type LayerItem,
 	nextNeeded,
 	type OrderState,
 } from "./recipes";
@@ -17,20 +18,38 @@ export type CookRequest =
 export type CookRequestIngredient = Ingredient;
 
 export type ActionKind =
-	"get-order" | "take-ingredient" | "place-ingredient" | "take-burger" | "sell";
+	| "get-order"
+	| "take-ingredient"
+	| "place-ingredient"
+	| "take-burger"
+	| "take"
+	| "transform"
+	| "place"
+	| "finish"
+	| "sell";
 
-export const ACTION_DURATIONS_MS: Record<ActionKind, number> = {
-	"get-order": 900,
-	"take-ingredient": 1200,
-	"place-ingredient": 900,
-	"take-burger": 1000,
-	sell: 1400,
+export interface ActionDuration {
+	min: number;
+	max: number;
+}
+
+export const ACTION_DURATIONS_MS: Record<ActionKind, ActionDuration> = {
+	"get-order": { min: 700, max: 1100 },
+	"take-ingredient": { min: 1000, max: 1400 },
+	"place-ingredient": { min: 700, max: 1100 },
+	"take-burger": { min: 800, max: 1200 },
+	take: { min: 1000, max: 1400 },
+	transform: { min: 1500, max: 2200 },
+	place: { min: 700, max: 1100 },
+	finish: { min: 800, max: 1200 },
+	sell: { min: 1200, max: 1600 },
 };
 
 export interface ActionState {
 	kind: ActionKind;
 	progress: number;
-	item: Ingredient | null;
+	item: Ingredient | LayerItem | null;
+	durationMs: number;
 }
 
 export interface ControlState {
@@ -73,9 +92,13 @@ export function markActive(control: ControlState) {
 export function startAction(
 	control: ControlState,
 	kind: ActionKind,
-	item: Ingredient | null = null,
+	item: Ingredient | LayerItem | null = null,
+	random: () => number = Math.random,
 ) {
-	control.action = { kind, progress: 0, item };
+	const { min, max } = ACTION_DURATIONS_MS[kind];
+	const durationMs = min + random() * (max - min);
+
+	control.action = { kind, progress: 0, item, durationMs };
 }
 
 export function isBusy(cook: { control: ControlState }): boolean {
@@ -89,7 +112,7 @@ export function advanceAction(control: ControlState, dt: number): boolean {
 		return false;
 	}
 
-	action.progress += dt / ACTION_DURATIONS_MS[action.kind];
+	action.progress += dt / action.durationMs;
 
 	if (action.progress >= 1) {
 		action.progress = 1;

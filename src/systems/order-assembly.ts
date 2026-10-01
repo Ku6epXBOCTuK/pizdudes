@@ -85,13 +85,13 @@ function applyAction(cook: OrderCook, action: ActionState) {
 
 		case "take-ingredient":
 			if (action.item) {
-				cook.carry.item = action.item;
+				cook.carry.item = action.item as Ingredient;
 			}
 			return;
 
 		case "place-ingredient":
 			if (action.item && cook.order) {
-				cook.order.placed.push(action.item);
+				cook.order.placed.push(action.item as Ingredient);
 			}
 			cook.carry.item = null;
 			return;

@@ -66,7 +66,7 @@ describe("работа у станции", () => {
 		const control = createControlState("chat");
 		startAction(control, "take-ingredient");
 
-		expect(control.action).toEqual({
+		expect(control.action).toMatchObject({
 			kind: "take-ingredient",
 			progress: 0,
 			item: null,
@@ -78,20 +78,20 @@ describe("работа у станции", () => {
 		const control = createControlState("chat");
 		startAction(control, "take-ingredient", "cheese");
 
-		expect(control.action).toEqual({
+		expect(control.action).toMatchObject({
 			kind: "take-ingredient",
 			progress: 0,
 			item: "cheese",
 		});
 
-		advanceAction(control, ACTION_DURATIONS_MS["take-ingredient"]);
+		advanceAction(control, control.action?.durationMs ?? 0);
 		expect(control.action).toBeNull();
 	});
 
 	it("прогресс растёт пропорционально длительности действия", () => {
 		const control = createControlState("chat");
-		const duration = ACTION_DURATIONS_MS.sell;
 		startAction(control, "sell");
+		const duration = control.action?.durationMs ?? 0;
 
 		advanceAction(control, duration / 4);
 		expect(control.action?.progress).toBeCloseTo(0.25, 5);
@@ -104,9 +104,7 @@ describe("работа у станции", () => {
 		const control = createControlState("chat");
 		startAction(control, "place-ingredient");
 
-		expect(
-			advanceAction(control, ACTION_DURATIONS_MS["place-ingredient"]),
-		).toBe(true);
+		expect(advanceAction(control, control.action?.durationMs ?? 0)).toBe(true);
 		expect(control.action).toBeNull();
 		expect(isBusy({ control })).toBe(false);
 		expect(advanceAction(control, 1000)).toBe(false);
@@ -116,9 +114,27 @@ describe("работа у станции", () => {
 		const control = createControlState("chat");
 		startAction(control, "get-order");
 
-		advanceAction(control, ACTION_DURATIONS_MS["get-order"] * 10);
+		advanceAction(control, (control.action?.durationMs ?? 0) * 10);
 
 		expect(control.action).toBeNull();
+	});
+
+	it("длительность роллится в пределах диапазона", () => {
+		const control = createControlState("chat");
+		const range = ACTION_DURATIONS_MS.transform;
+
+		startAction(control, "transform", null, () => 0);
+		expect(control.action?.durationMs).toBe(range.min);
+
+		startAction(control, "transform", null, () => 0.5);
+		expect(control.action?.durationMs).toBeCloseTo(
+			(range.min + range.max) / 2,
+			5,
+		);
+
+		startAction(control, "transform", null, () => 0.999999);
+		expect(control.action?.durationMs).toBeLessThanOrEqual(range.max);
+		expect(control.action?.durationMs).toBeGreaterThan(range.min);
 	});
 
 	it("без действия advance ничего не делает", () => {
@@ -128,10 +144,36 @@ describe("работа у станции", () => {
 		expect(control.action).toBeNull();
 	});
 
-	it.each(Object.keys(ACTION_DURATIONS_MS) as ActionKind[])(
-		"у действия %s положительная длительность",
+	it.each(["take", "transform", "place", "finish"] as const)(
+		"новое действие %s стартует, держит предмет и завершается по своей длительности",
 		(kind) => {
-			expect(ACTION_DURATIONS_MS[kind]).toBeGreaterThan(0);
+			const control = createControlState("chat");
+			startAction(control, kind, "chopped-tomato");
+
+			expect(control.action).toMatchObject({
+				kind,
+				progress: 0,
+				item: "chopped-tomato",
+			});
+			expect(isBusy({ control })).toBe(true);
+
+			const duration = control.action?.durationMs ?? 0;
+
+			advanceAction(control, duration / 2);
+			expect(control.action).not.toBeNull();
+
+			expect(advanceAction(control, duration)).toBe(true);
+			expect(control.action).toBeNull();
+		},
+	);
+
+	it.each(Object.keys(ACTION_DURATIONS_MS) as ActionKind[])(
+		"у действия %s корректный диапазон длительности",
+		(kind) => {
+			const { min, max } = ACTION_DURATIONS_MS[kind];
+
+			expect(min).toBeGreaterThan(0);
+			expect(max).toBeGreaterThanOrEqual(min);
 		},
 	);
 
@@ -149,7 +191,7 @@ describe("работа у станции", () => {
 		const order = createOrder(["bun", "cheese"]);
 		const cook = makeCook({ order });
 		startAction(cook.control, "take-ingredient");
-		advanceAction(cook.control, ACTION_DURATIONS_MS["take-ingredient"]);
+		advanceAction(cook.control, cook.control.action?.durationMs ?? 0);
 
 		expect(canRequest(fetchOf("bun"), cook)).toBe(true);
 	});

@@ -51,11 +51,16 @@
 
 ### Шаг 2 — действия в `control.ts`
 
-- [ ] Новые `ActionKind`: `take` / `transform` / `place` / `finish` / `sell`
-      (заменяют `take-ingredient` / `place-ingredient` / `take-burger`),
-      длительности.
-- [ ] `canRequest` / `isRequestSettled` под новые действия.
-- [ ] `tests/control.test.ts`.
+- [x] Новые `ActionKind`: `take` / `transform` / `place` / `finish` добавлены
+      рядом с легаси (`take-ingredient` / `place-ingredient` / `take-burger`
+      удалятся в шаге 4 вместе со старым рантаймом), `ActionState.item` расширен
+      до предметов каталога. Длительности — диапазоны `min`/`max`, фактическое
+      время роллится при старте действия (`ActionState.durationMs`).
+- [x] `tests/control.test.ts`: параметризованный тест длительностей покрывает
+      новые виды автоматически + поведенческий тест на
+      старт/прогресс/завершение.
+- [ ] Валидация чат-запросов под каталог (`fetch` любого слоя с учётом
+      `layered`/`assorted`) — переехала в шаг 4, там же новая модель заказа.
 
 ### Шаг 3 — станции и поле
 
