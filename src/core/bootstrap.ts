@@ -130,8 +130,8 @@ export async function bootstrapGame(
 		app.ticker.start();
 	};
 
-	GameEngine.on(GameEvents.PAUSE_GAME, onPause);
-	GameEngine.on(GameEvents.RESUME_GAME, onResume);
+	ctx.eventBus.on(GameEvents.PAUSE_GAME, onPause);
+	ctx.eventBus.on(GameEvents.RESUME_GAME, onResume);
 
 	const update = (ticker: Ticker) => {
 		const dt = Math.min(ticker.deltaMS, MAX_FRAME_MS) * timeScale;
@@ -187,8 +187,8 @@ export async function bootstrapGame(
 			app.ticker.remove(update);
 			app.ticker.stop();
 			app.renderer.off("resize", onResize);
-			GameEngine.off(GameEvents.PAUSE_GAME, onPause);
-			GameEngine.off(GameEvents.RESUME_GAME, onResume);
+			ctx.eventBus.off(GameEvents.PAUSE_GAME, onPause);
+			ctx.eventBus.off(GameEvents.RESUME_GAME, onResume);
 
 			world.clear();
 

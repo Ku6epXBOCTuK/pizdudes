@@ -1,6 +1,6 @@
 import { canRequest, markActive } from "../config/control";
 import type { ChatRequestEvent } from "../core/event-bus";
-import { GameEngine, GameEvents } from "../core/event-bus";
+import { GameEvents } from "../core/event-bus";
 import { randomSpawnPoint } from "../config/field";
 import { spawnCook } from "../core/spawn";
 import type { CookEntity, CookIdentity } from "../core/world";
@@ -80,8 +80,8 @@ export function createCookCommandsSystem(ctx: GameContext) {
 		console.info(`[cook] ${cook.name} cannot do that yet:`, request);
 	}
 
-	GameEngine.on(GameEvents.CHAT_ACTIVITY, enqueue);
-	GameEngine.on(GameEvents.CHAT_REQUEST, enqueue);
+	ctx.eventBus.on(GameEvents.CHAT_ACTIVITY, enqueue);
+	ctx.eventBus.on(GameEvents.CHAT_REQUEST, enqueue);
 
 	const system = () => {
 		if (pending.length === 0) {
@@ -95,8 +95,8 @@ export function createCookCommandsSystem(ctx: GameContext) {
 
 	return Object.assign(system, {
 		dispose() {
-			GameEngine.off(GameEvents.CHAT_ACTIVITY, enqueue);
-			GameEngine.off(GameEvents.CHAT_REQUEST, enqueue);
+			ctx.eventBus.off(GameEvents.CHAT_ACTIVITY, enqueue);
+			ctx.eventBus.off(GameEvents.CHAT_REQUEST, enqueue);
 			pending.length = 0;
 			for (const unsubscribe of indexSubscriptions) {
 				unsubscribe();

@@ -1,6 +1,6 @@
 import { DEV_SPAWN } from "../config/dev-spawn";
 import { randomSpawnPoint } from "../config/field";
-import { GameEngine, GameEvents } from "../core/event-bus";
+import { GameEvents } from "../core/event-bus";
 import { spawnCook } from "../core/spawn";
 import type { Entity } from "../core/world";
 import type { GameContext } from "../shared/context";
@@ -235,7 +235,7 @@ export function createDevSpawnRuntime(
 		}
 	}
 
-	GameEngine.on(GameEvents.CHAT_ACTIVITY, onActivity);
+	ctx.eventBus.on(GameEvents.CHAT_ACTIVITY, onActivity);
 
 	const system = (dt: number) => {
 		for (const dev of pending.splice(0)) {
@@ -248,7 +248,7 @@ export function createDevSpawnRuntime(
 
 	return Object.assign(system, {
 		dispose() {
-			GameEngine.off(GameEvents.CHAT_ACTIVITY, onActivity);
+			ctx.eventBus.off(GameEvents.CHAT_ACTIVITY, onActivity);
 			pending.length = 0;
 		},
 	});
