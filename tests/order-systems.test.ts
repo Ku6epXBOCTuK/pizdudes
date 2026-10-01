@@ -1,7 +1,12 @@
 import { World } from "miniplex";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { approachPoint, FIELD_SLOTS, slotPosition } from "../src/config/field";
+import {
+	approachPoint,
+	FIELD_SLOTS,
+	slotPosition,
+	WANDER_AREA,
+} from "../src/config/field";
 import {
 	createCarryState,
 	createOrder,
@@ -27,7 +32,7 @@ import {
 	WANDER_SPEED,
 } from "../src/constants";
 
-const SCREEN = { width: 1280, height: 800 };
+const SCREEN = { width: 1920, height: 1080 };
 const FRAME = 1000 / 60;
 
 function stationPositions() {
@@ -179,7 +184,7 @@ describe("навигация в auto-режиме", () => {
 			if (order.placed.length === 1) order.placed.push("bun");
 		}
 
-		expect(seen).toContain("cheese-shelf");
+		expect(seen).toContain("dairy-shelf");
 	});
 
 	it("несёт бургер на кассу", () => {
@@ -396,10 +401,10 @@ describe("блуждание при простое", () => {
 		expect(points.length).toBeGreaterThan(0);
 
 		for (const point of points) {
-			expect(point.x).toBeGreaterThanOrEqual(SCREEN.width * 0.26);
-			expect(point.x).toBeLessThanOrEqual(SCREEN.width * 0.74);
-			expect(point.y).toBeGreaterThanOrEqual(SCREEN.height * 0.12);
-			expect(point.y).toBeLessThanOrEqual(SCREEN.height * 0.88);
+			expect(point.x).toBeGreaterThanOrEqual(SCREEN.width * WANDER_AREA.xMin);
+			expect(point.x).toBeLessThanOrEqual(SCREEN.width * WANDER_AREA.xMax);
+			expect(point.y).toBeGreaterThanOrEqual(SCREEN.height * WANDER_AREA.yMin);
+			expect(point.y).toBeLessThanOrEqual(SCREEN.height * WANDER_AREA.yMax);
 		}
 	});
 

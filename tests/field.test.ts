@@ -6,18 +6,18 @@ import {
 	randomPointIn,
 	randomSpawnPoint,
 	randomWanderPoint,
+	slotPosition,
 	SPAWN_AREA,
 	WANDER_AREA,
 } from "../src/config/field";
 import { COOK_HALF_SIZE, STATION_HALF_SIZE } from "../src/constants";
 import { INGREDIENT_STATIONS, RECIPE_BURGER } from "../src/config/recipes";
 
+// Раскладка привязана к ячейкам 128x128 от левого верхнего угла и требует
+// сетку минимум 15x8, поэтому проверяем только разрешения от 1920x1080.
 const SCREENS = [
 	{ width: 1920, height: 1080 },
-	{ width: 1280, height: 800 },
-	{ width: 1366, height: 768 },
-	{ width: 1024, height: 768 },
-	{ width: 800, height: 600 },
+	{ width: 2560, height: 1440 },
 ];
 
 const STATION_HALF = STATION_HALF_SIZE;
@@ -39,8 +39,7 @@ function inArea(
 function pixelSlots(screen: { width: number; height: number }) {
 	return FIELD_SLOTS.map((slot) => ({
 		station: slot.station,
-		x: slot.x * screen.width,
-		y: slot.y * screen.height,
+		...slotPosition(slot, screen),
 	}));
 }
 
@@ -59,14 +58,14 @@ describe("раскладка станций", () => {
 		}
 	});
 
-	it("координаты в нормализованном диапазоне", () => {
-		for (const slot of FIELD_SLOTS) {
-			expect(slot.x).toBeGreaterThanOrEqual(0);
-			expect(slot.x).toBeLessThanOrEqual(1);
-			expect(slot.y).toBeGreaterThanOrEqual(0);
-			expect(slot.y).toBeLessThanOrEqual(1);
-		}
-	});
+	it.each(SCREENS)(
+		"все ячейки помещаются на экран на $width x $height",
+		(screen) => {
+			for (const slot of FIELD_SLOTS) {
+				expect(() => slotPosition(slot, screen)).not.toThrow();
+			}
+		},
+	);
 
 	it.each(SCREENS)(
 		"станции не наезжают друг на друга и не уходят за экран на $width x $height",
@@ -120,7 +119,7 @@ describe("области спавна и блуждания", () => {
 
 describe("randomPointIn", () => {
 	it("при random=0 даёт левый верх области", () => {
-		const screen = { width: 1280, height: 800 };
+		const screen = { width: 1920, height: 1080 };
 		expect(randomPointIn(SPAWN_AREA, screen, () => 0)).toEqual({
 			x: screen.width * SPAWN_AREA.xMin,
 			y: screen.height * SPAWN_AREA.yMin,
@@ -128,7 +127,7 @@ describe("randomPointIn", () => {
 	});
 
 	it("при random=0.5 даёт центр области", () => {
-		const screen = { width: 1280, height: 800 };
+		const screen = { width: 1920, height: 1080 };
 		const point = randomPointIn(SPAWN_AREA, screen, () => 0.5);
 		const centerX = ((SPAWN_AREA.xMin + SPAWN_AREA.xMax) / 2) * screen.width;
 		const centerY = ((SPAWN_AREA.yMin + SPAWN_AREA.yMax) / 2) * screen.height;
@@ -138,7 +137,7 @@ describe("randomPointIn", () => {
 	});
 
 	it("детерминирован при фиксированном random", () => {
-		const screen = { width: 800, height: 600 };
+		const screen = { width: 1920, height: 1080 };
 		const seq = [0.1, 0.9, 0.42, 0.77, 0.33];
 		let index = 0;
 		const random = () => seq[index++ % seq.length] ?? 0;
@@ -201,7 +200,7 @@ describe("случайные точки не попадают на станци�
 
 describe("точки не кладутся в один пиксель", () => {
 	it("5000 случайных точек дают заметный разброс", () => {
-		const screen = { width: 1280, height: 800 };
+		const screen = { width: 1920, height: 1080 };
 		const points = Array.from({ length: 5000 }, () =>
 			randomWanderPoint(screen),
 		);

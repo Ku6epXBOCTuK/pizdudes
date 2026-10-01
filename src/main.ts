@@ -3,6 +3,7 @@ import { GameEngine, GameEvents } from "./core/event-bus";
 import { createPixiApp } from "./pixi";
 import { createTwitchChat } from "./twitch/chat";
 import { readTwitchConfig } from "./twitch/config";
+import { attachDebugGrid } from "./ui/debug-grid";
 
 const host = document.querySelector<HTMLElement>("#app");
 
@@ -11,6 +12,10 @@ if (!host) {
 }
 
 const { app, layers } = await createPixiApp(host);
+
+if (new URLSearchParams(window.location.search).has("grid")) {
+	attachDebugGrid(layers.ui, app.renderer);
+}
 
 const twitch = readTwitchConfig();
 

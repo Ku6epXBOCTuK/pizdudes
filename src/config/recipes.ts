@@ -17,11 +17,11 @@ export type Item = Ingredient | typeof ITEM_BURGER;
 
 export const INGREDIENT_STATIONS: Record<Ingredient, StationType> = {
 	bun: "bun-shelf",
-	sauce: "sauce-dispenser",
-	patty: "patty-grill",
-	cheese: "cheese-shelf",
-	salad: "veggie-shelf",
-	tomato: "veggie-shelf",
+	sauce: "pantry-shelf",
+	patty: "grill",
+	cheese: "dairy-shelf",
+	salad: "produce-shelf",
+	tomato: "produce-shelf",
 };
 
 export const SERVING_COUNTER = "serving-counter";
