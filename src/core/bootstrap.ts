@@ -100,9 +100,12 @@ export async function bootstrapGame(
 		eventBus: GameEngine,
 	};
 
-	const groups = systemGroups(devOptions).map((group) =>
-		group.factories.map((factory) => factory(ctx)),
-	);
+	const createGroups = () =>
+		systemGroups(devOptions).map((group) =>
+			group.factories.map((factory) => factory(ctx)),
+		);
+
+	let groups = createGroups();
 
 	let timeScale = 1;
 	let isPaused = false;
@@ -161,6 +164,14 @@ export async function bootstrapGame(
 
 		reset() {
 			world.clear();
+
+			for (const group of groups) {
+				for (const system of group) {
+					system.dispose?.();
+				}
+			}
+
+			groups = createGroups();
 			floor = spawnField(ctx);
 			timeScale = 1;
 
