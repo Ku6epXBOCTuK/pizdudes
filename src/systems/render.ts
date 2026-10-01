@@ -11,6 +11,7 @@ export function createRenderSystem(ctx: GameContext) {
 
 		ctx.world.onEntityRemoved.subscribe((entity) => {
 			entity.view?.destroy();
+			entity.badge?.root.destroy();
 		}),
 	];
 

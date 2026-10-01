@@ -75,8 +75,6 @@ export function createDevSpawnSystem(
 	}
 
 	function removeCook(cook: Entity) {
-		cook.view?.destroy();
-		cook.badge?.root.destroy();
 		world.remove(cook);
 	}
 
