@@ -67,7 +67,7 @@ export function createCookTargetingSystem(
 	const cooks = world.with("carry", "order", "target", "control", "wander");
 	const stations = stationFinder(world);
 
-	return (dt: number) => {
+	const system = (dt: number) => {
 		for (const cook of cooks) {
 			const control = cook.control;
 
@@ -101,4 +101,10 @@ export function createCookTargetingSystem(
 			}
 		}
 	};
+
+	return Object.assign(system, {
+		dispose() {
+			stations.dispose();
+		},
+	});
 }

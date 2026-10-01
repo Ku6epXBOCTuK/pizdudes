@@ -16,11 +16,27 @@ export function createCookCommandsSystem(ctx: GameContext) {
 		"wander",
 	);
 
+	const index = new Map<string, CookEntity>();
+
+	for (const cook of byCookId) {
+		index.set(cook.cookId, cook);
+	}
+
+	const indexSubscriptions = [
+		byCookId.onEntityAdded.subscribe((cook) => {
+			index.set(cook.cookId, cook);
+		}),
+
+		byCookId.onEntityRemoved.subscribe((cook) => {
+			index.delete(cook.cookId);
+		}),
+	];
+
 	function ensureCook(identity: CookIdentity): CookEntity | undefined {
-		for (const cook of byCookId) {
-			if (cook.cookId === identity.userId) {
-				return cook;
-			}
+		const existing = index.get(identity.userId);
+
+		if (existing) {
+			return existing;
 		}
 
 		const cook = spawnCook(
@@ -82,6 +98,9 @@ export function createCookCommandsSystem(ctx: GameContext) {
 			GameEngine.off(GameEvents.CHAT_ACTIVITY, enqueue);
 			GameEngine.off(GameEvents.CHAT_REQUEST, enqueue);
 			pending.length = 0;
+			for (const unsubscribe of indexSubscriptions) {
+				unsubscribe();
+			}
 		},
 	});
 }
