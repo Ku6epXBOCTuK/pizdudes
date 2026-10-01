@@ -82,8 +82,9 @@ export function spawnCook(
 	position: Vector2,
 	mode: ControlMode = "auto",
 ): CookEntity {
+	const frames = cookWalkFrames(assets.cookSheet);
 	const view = new AnimatedSprite({
-		textures: cookWalkFrames(assets.cookSheet)["south-east"],
+		textures: frames["south-east"],
 		animationSpeed: COOK_WALK_FPS,
 		autoUpdate: false,
 		loop: true,
@@ -106,7 +107,7 @@ export function spawnCook(
 		wander: null,
 		view,
 		badge,
-		animated: true,
+		animation: { sprite: view, frames, direction: "south-east" },
 		playerTag: true,
 	} satisfies Entity;
 

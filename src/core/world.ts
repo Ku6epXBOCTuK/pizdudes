@@ -1,5 +1,6 @@
 import type { With } from "miniplex";
-import type { Sprite } from "pixi.js";
+import type { AnimatedSprite, Sprite } from "pixi.js";
+import type { CookDirection, CookWalkFrames } from "../assets/cook";
 import type { StationType } from "../assets/stations";
 import type { ControlState } from "../config/control";
 import type { CarryState, OrderState } from "../config/recipes";
@@ -14,6 +15,12 @@ export type StationEntity = With<
 	Entity,
 	"position" | "stationTag" | "stationType" | "approach"
 >;
+
+export interface AnimationState {
+	sprite: AnimatedSprite;
+	frames: CookWalkFrames;
+	direction: CookDirection;
+}
 
 export interface CookIdentity {
 	userId: string;
@@ -40,7 +47,7 @@ export type Entity = Partial<{
 	stationTag: true;
 	stationType: StationType;
 	approach: Vector2;
-	animated: true;
+	animation: AnimationState;
 	playerTag: true;
 	config: GlobalConfig;
 }>;
