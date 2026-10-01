@@ -184,6 +184,8 @@ export function createDevSpawnRuntime(
 ) {
 	let worstFrameMs = 0;
 
+	const pending: DevCommand[] = [];
+
 	function onActivity({
 		cook,
 		dev,
@@ -207,6 +209,10 @@ export function createDevSpawnRuntime(
 			return;
 		}
 
+		pending.push(dev);
+	}
+
+	function process(dev: DevCommand) {
 		switch (dev.kind) {
 			case "spawn-bots":
 				controller.enqueue(dev.count);
@@ -232,6 +238,10 @@ export function createDevSpawnRuntime(
 	GameEngine.on(GameEvents.CHAT_ACTIVITY, onActivity);
 
 	const system = (dt: number) => {
+		for (const dev of pending.splice(0)) {
+			process(dev);
+		}
+
 		controller.consume(dt);
 		worstFrameMs = Math.max(worstFrameMs, ctx.app.ticker.deltaMS);
 	};
@@ -239,6 +249,7 @@ export function createDevSpawnRuntime(
 	return Object.assign(system, {
 		dispose() {
 			GameEngine.off(GameEvents.CHAT_ACTIVITY, onActivity);
+			pending.length = 0;
 		},
 	});
 }

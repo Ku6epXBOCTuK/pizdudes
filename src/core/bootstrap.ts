@@ -31,12 +31,16 @@ type SystemGroup = { name: string; factories: SystemFactory[] };
 function systemGroups(devOptions: DevCommandsOptions): SystemGroup[] {
 	return [
 		{
+			name: "input",
+			factories: [createCookCommandsSystem],
+		},
+		{
 			name: "ai",
 			factories: [createOrderAiSystem],
 		},
 		{
 			name: "order",
-			factories: [createOrderAssemblySystem, createCookCommandsSystem],
+			factories: [createOrderAssemblySystem],
 		},
 		{
 			name: "dev",
