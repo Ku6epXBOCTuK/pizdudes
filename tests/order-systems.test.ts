@@ -10,8 +10,24 @@ import {
 import {
 	createCarryState,
 	createOrder,
-	type Item,
+	type DishRecipe,
+	type LayerItem,
 } from "../src/config/recipes";
+
+function makeRecipe(
+	layers: LayerItem[],
+	overrides: Partial<DishRecipe> = {},
+): DishRecipe {
+	return {
+		id: "test-recipe",
+		name: "Тестовый",
+		dish: "dish-burger",
+		layers,
+		order: "layered",
+		finishAt: "serving-counter",
+		...overrides,
+	};
+}
 import { createControlState, type CookRequest } from "../src/config/control";
 import type { StationType } from "../src/assets/stations";
 import type { Entity, Vector2 } from "../src/core/world";
@@ -164,29 +180,30 @@ describe("навигация в auto-режиме", () => {
 	});
 
 	it("после получения заказа идёт за первым ингредиентом", () => {
-		cook.order = createOrder(["bun", "cheese", "bun"]);
+		cook.order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		h.step(0.1);
 		expect(typeOf(cookOf(h, "house"))).toBe("bun-shelf");
 	});
 
 	it("меняет цель по мере выкладки слоёв", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		cook.order = order;
 
-		const seen: Array<StationType | null> = [];
-		for (let i = 0; i < 60 * 120; i++) {
+		for (let i = 0; i < 60 * 60 && order.placed.length === 0; i++) {
 			h.tick();
-			seen.push(typeOf(cookOf(h, "house")));
-			if (order.placed.length === 1) order.placed.push("bun");
 		}
 
-		expect(seen).toContain("dairy-shelf");
+		expect(order.placed).toEqual(["bun"]);
+
+		h.step(0.1);
+
+		expect(typeOf(cookOf(h, "house"))).toBe("dairy-shelf");
 	});
 
 	it("несёт бургер на кассу", () => {
-		cook.order = createOrder(["bun"]);
-		(cook.order as { placed: Item[] }).placed.push("bun");
-		cook.carry = { item: "burger" };
+		cook.order = createOrder(makeRecipe(["bun"]));
+		cook.order.placed.push("bun");
+		cook.carry = { item: "dish-burger" };
 
 		h.step(0.1);
 
@@ -238,7 +255,9 @@ describe("chat-режим", () => {
 	});
 
 	it("!положи ведёт сначала к полке, потом к столу", () => {
-		const cook = chatCook({ order: createOrder(["bun", "cheese", "bun"]) });
+		const cook = chatCook({
+			order: createOrder(makeRecipe(["bun", "cheese", "bun"])),
+		});
 		const h = harness([cook]);
 
 		issue(h, { kind: "fetch", ingredient: "bun" });
@@ -263,9 +282,9 @@ describe("chat-режим", () => {
 	});
 
 	it("!отдать ведёт на кассу, когда несёт бургер", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
-		const cook = chatCook({ order, carry: { item: "burger" } });
+		const cook = chatCook({ order, carry: { item: "dish-burger" } });
 		const h = harness([cook]);
 
 		issue(h, { kind: "deliver" });
@@ -287,7 +306,7 @@ describe("chat-режим", () => {
 	});
 
 	it("запрос сбрасывается только один раз, повар не бежит по кругу", () => {
-		const cook = chatCook({ order: createOrder(["bun"]) });
+		const cook = chatCook({ order: createOrder(makeRecipe(["bun"])) });
 		const h = harness([cook]);
 
 		issue(h, { kind: "fetch", ingredient: "bun" });
@@ -628,11 +647,11 @@ describe("пауза при работе со станцией", () => {
 	});
 
 	it("все виды работы запускаются с прогрессом", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		const cook = makeCook({
 			name: "house",
 			order,
-			carry: { item: "burger" },
+			carry: { item: "dish-burger" },
 		});
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
@@ -648,33 +667,33 @@ describe("пауза при работе со станцией", () => {
 	});
 
 	it("предмет появляется в руках только после окончания полоски", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 		const cook = makeCook({ name: "house", order });
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
 
 		firstAction(h);
-		expect(c.control?.action?.kind).toBe("take-burger");
+		expect(c.control?.action?.kind).toBe("finish");
 		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
 		h.step(duration * 0.5);
 		expect(c.carry?.item).toBeNull();
-		expect(c.control?.action?.kind).toBe("take-burger");
+		expect(c.control?.action?.kind).toBe("finish");
 
 		h.step(duration * 0.6);
-		expect(c.carry?.item).toBe("burger");
+		expect(c.carry?.item).toBe("dish-burger");
 		expect(c.control?.action).toBeNull();
 	});
 
 	it("ингредиент попадает на сервировку только после окончания полоски", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ name: "house", order, carry: { item: "bun" } });
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
 
 		firstAction(h);
-		expect(c.control?.action?.kind).toBe("place-ingredient");
+		expect(c.control?.action?.kind).toBe("place");
 		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
 		h.step(duration * 0.5);
@@ -705,12 +724,12 @@ describe("пауза при работе со станцией", () => {
 	});
 
 	it("продажа снимает заказ и бургер только после окончания полоски", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 		const cook = makeCook({
 			name: "house",
 			order,
-			carry: { item: "burger" },
+			carry: { item: "dish-burger" },
 		});
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
@@ -720,7 +739,7 @@ describe("пауза при работе со станцией", () => {
 		const duration = (c.control?.action?.durationMs ?? 0) / 1000;
 
 		h.step(duration * 0.5);
-		expect(c.carry?.item).toBe("burger");
+		expect(c.carry?.item).toBe("dish-burger");
 		expect(c.order).not.toBeNull();
 
 		h.step(duration * 0.6);
@@ -729,7 +748,7 @@ describe("пауза при работе со станцией", () => {
 	});
 
 	it("ингредиент запоминается в действии, а не берётся из заказа позже", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ name: "house", order, carry: { item: "bun" } });
 		const h = harness([cook]);
 		const c = cookOf(h, "house");
@@ -740,6 +759,108 @@ describe("пауза при работе со станцией", () => {
 
 		h.step(duration * 1.2);
 		expect(c.order?.placed).toEqual(["bun"]);
+	});
+});
+
+describe("цепочки подготовки в auto-режиме", () => {
+	it("нарезка: полка → доска → выдача → финиш", () => {
+		const order = createOrder(makeRecipe(["chopped-tomato"]));
+		const cook = makeCook({ name: "house", order });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		const visited = new Set<StationType | null>();
+		let carriedRaw = false;
+		let carriedSemi = false;
+
+		for (let i = 0; i < 60 * 120; i++) {
+			h.tick();
+			visited.add(typeOf(c));
+			if (c.carry?.item === "tomato") carriedRaw = true;
+			if (c.carry?.item === "chopped-tomato") carriedSemi = true;
+			if (c.order?.placed.length === 1) break;
+		}
+
+		expect(visited).toContain("produce-shelf");
+		expect(visited).toContain("cutting-board");
+		expect(visited).toContain("serving-counter");
+		expect(carriedRaw).toBe(true);
+		expect(carriedSemi).toBe(true);
+		expect(c.order?.placed).toEqual(["chopped-tomato"]);
+
+		for (let i = 0; i < 60 * 30; i++) {
+			h.tick();
+			if (c.carry?.item === "dish-burger") break;
+		}
+
+		expect(c.carry?.item).toBe("dish-burger");
+	});
+
+	it("двухшаговая цепочка: мука → тесто → основа", () => {
+		const order = createOrder(makeRecipe(["pizza-base"]));
+		const cook = makeCook({ name: "house", order });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		const visited = new Set<StationType | null>();
+		const carries: string[] = [];
+
+		for (let i = 0; i < 60 * 180; i++) {
+			h.tick();
+			visited.add(typeOf(c));
+			const item = c.carry?.item;
+			if (item && carries.at(-1) !== item) carries.push(item);
+			if (c.order?.placed.length === 1) break;
+		}
+
+		expect(carries).toEqual(["flour", "dough", "pizza-base"]);
+		expect(visited).toContain("pantry-shelf");
+		expect(visited).toContain("dough-mixer");
+		expect(visited).toContain("pizza-oven");
+		expect(c.order?.placed).toEqual(["pizza-base"]);
+	});
+
+	it("суп кладётся прямо в кастрюлю и доводится там же", () => {
+		const order = createOrder(
+			makeRecipe(["beans"], { dish: "dish-soup", finishAt: "stove-pot" }),
+		);
+		const cook = makeCook({ name: "house", order });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		const visited = new Set<StationType | null>();
+		let placedAt: StationType | null = null;
+
+		for (let i = 0; i < 60 * 120; i++) {
+			h.tick();
+			visited.add(typeOf(c));
+			if (c.control?.action?.kind === "place") {
+				placedAt = c.target?.stationType ?? null;
+			}
+			if (c.carry?.item === "dish-soup") break;
+		}
+
+		expect(visited).toContain("pantry-shelf");
+		expect(visited).not.toContain("serving-counter");
+		expect(placedAt).toBe("stove-pot");
+		expect(c.carry?.item).toBe("dish-soup");
+	});
+
+	it("assorted-заказ собирается в любом порядке до конца", () => {
+		const order = createOrder(
+			makeRecipe(["cheese", "bun"], { order: "assorted" }),
+		);
+		const cook = makeCook({ name: "house", order });
+		const h = harness([cook]);
+		const c = cookOf(h, "house");
+
+		for (let i = 0; i < 60 * 180; i++) {
+			h.tick();
+			if (c.carry?.item === "dish-burger") break;
+		}
+
+		expect(c.order?.placed.slice().sort()).toEqual(["bun", "cheese"]);
+		expect(c.carry?.item).toBe("dish-burger");
 	});
 });
 

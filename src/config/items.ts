@@ -1,26 +1,7 @@
-import type { CatalogItem, Ingredient, Item } from "./recipes";
+import type { CarryItem, CatalogItem } from "./recipes";
 
-export const CARRY_EMOJI: Record<Item, string> = {
-	bun: "🍞",
-	sauce: "🥫",
-	patty: "🥩",
-	cheese: "🧀",
-	salad: "🥬",
-	tomato: "🍅",
-	burger: "🍔",
-};
-
-export const INGREDIENT_LABELS: Record<Ingredient, string> = {
-	bun: "булка",
-	sauce: "соус",
-	patty: "котлета",
-	cheese: "сыр",
-	salad: "салат",
-	tomato: "помидор",
-};
-
-export function carryEmoji(item: Item | null): string {
-	return item ? CARRY_EMOJI[item] : "";
+export function carryEmoji(item: CarryItem | null): string {
+	return item ? CATALOG_EMOJI[item] : "";
 }
 
 export const CATALOG_LABELS: Record<CatalogItem, string> = {

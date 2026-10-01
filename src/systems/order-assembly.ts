@@ -4,77 +4,91 @@ import { hasArrived } from "../core/navigation";
 import {
 	type ActionState,
 	advanceAction,
+	type ActionKind,
 	startAction,
 } from "../config/control";
 import {
 	CASH_REGISTER,
+	type CarryItem,
+	chainRoot,
 	createOrder,
-	type Ingredient,
-	INGREDIENT_STATIONS,
+	isDish,
 	isOrderComplete,
-	ITEM_BURGER,
-	nextNeeded,
+	neededNow,
+	placeStation,
+	prepChain,
+	RAW_ITEM_STATION,
 	SERVING_COUNTER,
+	transformResult,
 } from "../config/recipes";
 import type { Entity } from "../core/world";
 import type { GameContext } from "../shared/context";
 
 type OrderCook = With<Entity, "carry" | "order" | "control">;
 
-type ActionPlan =
-	| { kind: "get-order"; item: null }
-	| { kind: "take-ingredient"; item: Ingredient }
-	| { kind: "place-ingredient"; item: Ingredient }
-	| { kind: "take-burger"; item: null }
-	| { kind: "sell"; item: null };
+type ActionPlan = { kind: ActionKind; item: CarryItem | null };
 
 function planAction(target: StationType, cook: OrderCook): ActionPlan | null {
-	const carry = cook.carry;
-	const order = cook.order;
-
-	if (target === SERVING_COUNTER) {
-		if (carry.item === null) {
-			if (!order) {
-				return { kind: "get-order", item: null };
-			}
-
-			if (isOrderComplete(order)) {
-				return { kind: "take-burger", item: null };
-			}
-
-			return null;
-		}
-
-		if (carry.item === ITEM_BURGER || !order) {
-			return null;
-		}
-
-		if (nextNeeded(order) !== carry.item) {
-			return null;
-		}
-
-		return { kind: "place-ingredient", item: carry.item };
-	}
+	const carry = cook.carry.item;
+	const order = cook.order ?? null;
 
 	if (target === CASH_REGISTER) {
-		if (carry.item !== ITEM_BURGER) {
-			return null;
+		return order && carry !== null && isDish(carry)
+			? { kind: "sell", item: null }
+			: null;
+	}
+
+	if (!order) {
+		return target === SERVING_COUNTER && carry === null
+			? { kind: "get-order", item: null }
+			: null;
+	}
+
+	if (carry !== null && isDish(carry)) {
+		return null;
+	}
+
+	if (isOrderComplete(order)) {
+		return target === order.recipe.finishAt && carry === null
+			? { kind: "finish", item: order.recipe.dish }
+			: null;
+	}
+
+	const requested =
+		cook.control.request?.kind === "fetch"
+			? cook.control.request.ingredient
+			: null;
+	const candidates = neededNow(order);
+	const layer =
+		requested && candidates.includes(requested) ? requested : candidates[0];
+
+	if (!layer) {
+		return null;
+	}
+
+	if (carry !== null) {
+		if (carry === layer) {
+			return target === placeStation(order.recipe)
+				? { kind: "place", item: carry }
+				: null;
 		}
 
-		return { kind: "sell", item: null };
-	}
+		const step = prepChain(layer).find(
+			(s) => s.from === carry && s.at === target,
+		);
 
-	if (carry.item !== null || !order) {
+		if (step) {
+			return { kind: "transform", item: transformResult(carry, target) };
+		}
+
 		return null;
 	}
 
-	const needed = nextNeeded(order);
+	const root = chainRoot(layer);
 
-	if (!needed || INGREDIENT_STATIONS[needed] !== target) {
-		return null;
-	}
-
-	return { kind: "take-ingredient", item: needed };
+	return target === RAW_ITEM_STATION[root]
+		? { kind: "take", item: root }
+		: null;
 }
 
 function applyAction(cook: OrderCook, action: ActionState) {
@@ -83,21 +97,20 @@ function applyAction(cook: OrderCook, action: ActionState) {
 			cook.order = createOrder();
 			return;
 
-		case "take-ingredient":
-			if (action.item) {
-				cook.carry.item = action.item as Ingredient;
-			}
+		case "take":
+		case "transform":
+			cook.carry.item = action.item;
 			return;
 
-		case "place-ingredient":
-			if (action.item && cook.order) {
-				cook.order.placed.push(action.item as Ingredient);
+		case "place":
+			if (action.item && cook.order && !isDish(action.item)) {
+				cook.order.placed.push(action.item);
 			}
 			cook.carry.item = null;
 			return;
 
-		case "take-burger":
-			cook.carry.item = ITEM_BURGER;
+		case "finish":
+			cook.carry.item = action.item;
 			return;
 
 		case "sell":

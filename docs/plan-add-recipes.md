@@ -68,7 +68,8 @@
       `dough-mixer`, `pizza-oven`, `stove-pot`; переименования: `veggie-shelf` →
       `produce-shelf`, `cheese-shelf` → `dairy-shelf`, `patty-grill` → `grill`,
       `sauce-dispenser` → `pantry-shelf`).
-- [ ] Станции объявляют, что преобразуют и какие блюда доводят (часть шага 1).
+- [x] Станции объявляют, что преобразуют и какие блюда доводят — через `PREP` и
+      `STATION_FINISHES` в каталоге (шаги 1 и 4).
 - [x] `src/config/field.ts`: станции на сетке ячеек, `WANDER_AREA`/`SPAWN_AREA`
       под новую раскладку, точки спавна/блуждания пересэмплируются с отступом от
       станций (центральные станции стоят внутри зоны блуждания).
@@ -76,21 +77,33 @@
 
 ### Шаг 4 — системы заказов
 
-- [ ] `src/systems/order-ai.ts`: выбор следующей станции с учётом шага цепочки
-      `PREP` (полка → станция → … → раздача); для `assorted` — свободный выбор.
-- [ ] `src/systems/order-assembly.ts`: планирование и применение действий,
-      `transform` на станции, `finish` на `finishAt`, супы кладутся прямо в
-      `stove-pot`.
-- [ ] `tests/order-systems.test.ts`: маршрут чизбургера из примера ниже как
-      эталонный сценарий.
+- [x] Легаси-модель удалена, рантайм переведён на каталог: `OrderState` =
+      рецепт + выложенные слои, `CarryState` = слой или блюдо.
+- [x] `src/config/recipes.ts`: `prepChain` / `chainRoot` / `transformResult` /
+      `placeStation` / `routeForLayer` — маршрут «полка → станция → … →
+      выкладка» вычисляется из `PREP`, без хардкода в системах.
+- [x] `src/systems/cook-targeting.ts`: выбор следующей станции с учётом шага
+      цепочки; для `assorted` повар берёт любой недостающий слой.
+- [x] `src/systems/order-assembly.ts`: `take` / `transform` / `place` / `finish`
+      / `sell`; супы кладутся прямо в `stove-pot` и доводятся там же, остальное
+      собирается на выдаче и доводится на `finishAt`.
+- [x] `src/config/control.ts`: чат-валидация `fetch` по `neededNow` (layered —
+      только следующий, assorted — любой недостающий).
+- [x] Попутно сделано из шага 5: подпись бейджа — строка (битовая
+      `badgeSignature` удалена), алиасы чат-команд строятся из `CATALOG_LABELS`,
+      легенда бегущей строки показывает меню из каталога.
+- [x] `tests/order-systems.test.ts`: сценарии цепочек (нарезка, двухшаговая
+      пицца, суп в кастрюле, assorted) + хрупкий тест с искусственным пушем в
+      `placed` переписан на прямое ожидание смены цели.
 
 ### Шаг 5 — UI и чат
 
-- [ ] `src/ui/cook-badge.ts` + `src/systems/cook-badge.ts`: название блюда в
-      бейдже, подпись бейджа строкой вместо битовой `badgeSignature`.
-- [ ] `tests/badge-signature.test.ts`.
-- [ ] `src/twitch/commands.ts`: алиасы предметов.
-- [ ] `src/config/legend.ts`: легенда под новый контент.
+- [ ] `src/ui/cook-badge.ts`: название блюда в бейдже повара.
+- [x] Подпись бейджа строкой вместо битовой `badgeSignature` (сделано в шаге 4).
+- [x] `tests/badge-signature.test.ts` (переписан в шаге 4).
+- [x] `src/twitch/commands.ts`: алиасы строятся из `CATALOG_LABELS` + id
+      (сделано в шаге 4). При желании — дополнительные разговорные алиасы.
+- [x] `src/config/legend.ts`: меню из каталога (сделано в шаге 4).
 
 ### Шаг 6 — проверка
 

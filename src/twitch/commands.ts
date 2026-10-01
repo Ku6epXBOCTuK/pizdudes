@@ -1,33 +1,13 @@
 import type { CookRequest } from "../config/control";
-import type { Ingredient } from "../config/recipes";
+import { CATALOG_LABELS } from "../config/items";
+import { type LayerItem, RAW_ITEMS, SEMI_ITEMS } from "../config/recipes";
 
-const INGREDIENT_ALIASES: Record<string, Ingredient> = {
-	булка: "bun",
-	булочка: "bun",
-	булки: "bun",
-	bun: "bun",
-
-	соус: "sauce",
-	sauce: "sauce",
-
-	котлета: "patty",
-	котлеты: "patty",
-	котлету: "patty",
-	patty: "patty",
-
-	сыр: "cheese",
-	cheese: "cheese",
-
-	салат: "salad",
-	лист: "salad",
-	листья: "salad",
-	salad: "salad",
-
-	помидор: "tomato",
-	помидоры: "tomato",
-	томат: "tomato",
-	tomato: "tomato",
-};
+const INGREDIENT_ALIASES: Record<string, LayerItem> = Object.fromEntries(
+	[...RAW_ITEMS, ...SEMI_ITEMS].flatMap((item) => [
+		[item, item],
+		[CATALOG_LABELS[item].toLowerCase().replace(/ё/g, "е"), item],
+	]),
+);
 
 const COMMAND_TAKE = "!взять";
 const COMMAND_PLACE = "!положи";

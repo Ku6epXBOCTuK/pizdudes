@@ -1,29 +1,46 @@
 import { describe, expect, it } from "vitest";
 
 import { badgeSignature } from "../src/ui/cook-badge";
-import { createOrder, type Ingredient } from "../src/config/recipes";
+import {
+	createOrder,
+	type DishRecipe,
+	type LayerItem,
+} from "../src/config/recipes";
 
-const RECIPE: Ingredient[] = [
+const LAYERS: LayerItem[] = [
 	"bun",
-	"sauce",
 	"patty",
 	"cheese",
-	"salad",
-	"tomato",
+	"chopped-lettuce",
+	"chopped-tomato",
 	"bun",
 ];
+
+const RECIPE: DishRecipe = {
+	id: "test-recipe",
+	name: "Тестовый",
+	dish: "dish-burger",
+	layers: LAYERS,
+	order: "layered",
+	finishAt: "serving-counter",
+};
 
 describe("badgeSignature", () => {
 	it("пусто, средне и полно дают разные подписи", () => {
 		const empty = badgeSignature(null, null, null, true);
 
 		const middle = createOrder(RECIPE);
-		middle.placed.push("bun", "sauce", "patty");
-		const middleSignature = badgeSignature(middle, "cheese", 0.5, true);
+		middle.placed.push("bun", "patty", "cheese");
+		const middleSignature = badgeSignature(
+			middle,
+			"chopped-lettuce",
+			0.5,
+			true,
+		);
 
 		const full = createOrder(RECIPE);
-		full.placed.push(...RECIPE);
-		const fullSignature = badgeSignature(full, "burger", 1, true);
+		full.placed.push(...LAYERS);
+		const fullSignature = badgeSignature(full, "dish-burger", 1, true);
 
 		expect(empty).not.toBe(middleSignature);
 		expect(middleSignature).not.toBe(fullSignature);
@@ -34,8 +51,8 @@ describe("badgeSignature", () => {
 		const order = createOrder(RECIPE);
 		order.placed.push("bun");
 
-		expect(badgeSignature(order, "sauce", 0.3, true)).toBe(
-			badgeSignature(order, "sauce", 0.3, true),
+		expect(badgeSignature(order, "patty", 0.3, true)).toBe(
+			badgeSignature(order, "patty", 0.3, true),
 		);
 	});
 

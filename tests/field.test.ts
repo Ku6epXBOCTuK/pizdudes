@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { STATION_TYPES, type StationType } from "../src/assets/stations";
+import { STATION_TYPES } from "../src/assets/stations";
 import {
 	FIELD_SLOTS,
 	randomPointIn,
@@ -11,7 +11,12 @@ import {
 	WANDER_AREA,
 } from "../src/config/field";
 import { COOK_HALF_SIZE, STATION_HALF_SIZE } from "../src/constants";
-import { INGREDIENT_STATIONS, RECIPE_BURGER } from "../src/config/recipes";
+import {
+	chainRoot,
+	DISH_RECIPES,
+	prepChain,
+	RAW_ITEM_STATION,
+} from "../src/config/recipes";
 
 // Раскладка привязана к ячейкам 128x128 от левого верхнего угла и требует
 // сетку минимум 15x8, поэтому проверяем только разрешения от 1920x1080.
@@ -91,12 +96,19 @@ describe("раскладка станций", () => {
 		},
 	);
 
-	it("у каждого ингредиента рецепта есть своя станция-источник", () => {
-		for (const ingredient of RECIPE_BURGER) {
-			const station: StationType = INGREDIENT_STATIONS[ingredient];
+	it("у каждого рецепта весь маршрут проходит по станциям на поле", () => {
+		const placed = FIELD_SLOTS.map((s) => s.station);
 
-			expect(STATION_TYPES).toContain(station);
-			expect(FIELD_SLOTS.map((s) => s.station)).toContain(station);
+		for (const recipe of DISH_RECIPES) {
+			for (const layer of recipe.layers) {
+				expect(placed).toContain(RAW_ITEM_STATION[chainRoot(layer)]);
+
+				for (const step of prepChain(layer)) {
+					expect(placed).toContain(step.at);
+				}
+			}
+
+			expect(placed).toContain(recipe.finishAt);
 		}
 	});
 });

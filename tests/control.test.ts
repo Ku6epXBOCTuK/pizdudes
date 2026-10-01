@@ -17,10 +17,26 @@ import {
 	type CarryState,
 	createCarryState,
 	createOrder,
-	type Ingredient,
+	type DishRecipe,
+	type LayerItem,
 	type OrderState,
 } from "../src/config/recipes";
 import { IDLE_WANDER_MAX_MS, IDLE_WANDER_MIN_MS } from "../src/constants";
+
+function makeRecipe(
+	layers: LayerItem[],
+	overrides: Partial<DishRecipe> = {},
+): DishRecipe {
+	return {
+		id: "test-recipe",
+		name: "Тестовый",
+		dish: "dish-burger",
+		layers,
+		order: "layered",
+		finishAt: "serving-counter",
+		...overrides,
+	};
+}
 
 interface CookState {
 	carry: CarryState;
@@ -38,7 +54,7 @@ function makeCook(overrides: Partial<CookState> = {}) {
 
 const TAKE: CookRequest = { kind: "get-order" };
 const DELIVER: CookRequest = { kind: "deliver" };
-const fetchOf = (ingredient: Ingredient): CookRequest => ({
+const fetchOf = (ingredient: LayerItem): CookRequest => ({
 	kind: "fetch",
 	ingredient,
 });
@@ -64,10 +80,10 @@ describe("createControlState", () => {
 describe("работа у станции", () => {
 	it("стартует с нулевого прогресса", () => {
 		const control = createControlState("chat");
-		startAction(control, "take-ingredient");
+		startAction(control, "take");
 
 		expect(control.action).toMatchObject({
-			kind: "take-ingredient",
+			kind: "take",
 			progress: 0,
 			item: null,
 		});
@@ -76,10 +92,10 @@ describe("работа у станции", () => {
 
 	it("ингредиент сохраняется в действии, чтобы применить позже", () => {
 		const control = createControlState("chat");
-		startAction(control, "take-ingredient", "cheese");
+		startAction(control, "take", "cheese");
 
 		expect(control.action).toMatchObject({
-			kind: "take-ingredient",
+			kind: "take",
 			progress: 0,
 			item: "cheese",
 		});
@@ -102,7 +118,7 @@ describe("работа у станции", () => {
 
 	it("действие завершается ровно один раз и очищает прогресс", () => {
 		const control = createControlState("chat");
-		startAction(control, "place-ingredient");
+		startAction(control, "place");
 
 		expect(advanceAction(control, control.action?.durationMs ?? 0)).toBe(true);
 		expect(control.action).toBeNull();
@@ -178,9 +194,9 @@ describe("работа у станции", () => {
 	);
 
 	it("повара нельзя дёрнуть новой командой, пока он работает", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order });
-		startAction(cook.control, "take-ingredient");
+		startAction(cook.control, "take");
 
 		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
 		expect(canRequest(TAKE, cook)).toBe(false);
@@ -188,9 +204,9 @@ describe("работа у станции", () => {
 	});
 
 	it("после завершения работы команды снова принимаются", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order });
-		startAction(cook.control, "take-ingredient");
+		startAction(cook.control, "take");
 		advanceAction(cook.control, cook.control.action?.durationMs ?? 0);
 
 		expect(canRequest(fetchOf("bun"), cook)).toBe(true);
@@ -230,19 +246,28 @@ describe("canRequest: get-order", () => {
 
 describe("canRequest: fetch", () => {
 	it("разрешён для следующего по рецепту слоя", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 
 		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
 	});
 
 	it("запрещён для слоя не по порядку", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 
 		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(false);
 	});
 
+	it("assorted: разрешён любой недостающий слой, не только первый", () => {
+		const order = createOrder(
+			makeRecipe(["bun", "cheese", "bun"], { order: "assorted" }),
+		);
+
+		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(true);
+		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
+	});
+
 	it("после первого bun запрашивается следующий слой, а не bun", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		order.placed.push("bun");
 
 		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(true);
@@ -250,7 +275,7 @@ describe("canRequest: fetch", () => {
 	});
 
 	it("второй bun запрашивается после cheese", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		order.placed.push("bun", "cheese");
 
 		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
@@ -261,14 +286,14 @@ describe("canRequest: fetch", () => {
 	});
 
 	it("запрещён когда руки заняты", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		const cook = makeCook({ order, carry: { item: "cheese" } });
 
 		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
 	});
 
 	it("запрещён на собранном заказе", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 
 		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(false);
@@ -277,7 +302,7 @@ describe("canRequest: fetch", () => {
 
 describe("canRequest: deliver", () => {
 	it("разрешён на собранном заказе с пустыми руками", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 
 		expect(canRequest(DELIVER, makeCook({ order }))).toBe(true);
@@ -292,7 +317,7 @@ describe("canRequest: deliver", () => {
 	});
 
 	it("запрещён когда руки заняты", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 		const cook = makeCook({ order, carry: { item: "cheese" } });
 
@@ -314,20 +339,20 @@ describe("isRequestSettled: get-order", () => {
 
 describe("isRequestSettled: fetch", () => {
 	it("не выполнен пока нужный слой впереди", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 
 		expect(isRequestSettled(fetchOf("bun"), makeCook({ order }))).toBe(false);
 	});
 
 	it("не выполнен пока повар несёт ингредиент", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order, carry: { item: "bun" } });
 
 		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
 	});
 
 	it("выполнен после выкладки", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		order.placed.push("bun");
 
 		expect(isRequestSettled(fetchOf("bun"), makeCook({ order }))).toBe(true);
@@ -340,7 +365,7 @@ describe("isRequestSettled: fetch", () => {
 	});
 
 	it("не выполнен если несёт что-то другое, а слой ещё впереди", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order, carry: { item: "patty" } });
 
 		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
@@ -349,17 +374,17 @@ describe("isRequestSettled: fetch", () => {
 
 describe("isRequestSettled: deliver", () => {
 	it("не выполнен пока несёт бургер", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
-		const cook = makeCook({ order, carry: { item: "burger" } });
+		const cook = makeCook({ order, carry: { item: "dish-burger" } });
 
 		expect(isRequestSettled(DELIVER, cook)).toBe(false);
 	});
 
 	it("не выполнен когда бургер отдан, но заказ ещё есть", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
-		const cook = makeCook({ order, carry: { item: "burger" } });
+		const cook = makeCook({ order, carry: { item: "dish-burger" } });
 		cook.carry.item = null;
 
 		expect(isRequestSettled(DELIVER, cook)).toBe(false);
@@ -380,7 +405,7 @@ describe("связка canRequest и isRequestSettled", () => {
 	});
 
 	it("fetch нельзя повторить, пока слой не выложен", () => {
-		const order = createOrder(["bun", "cheese"]);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order });
 		const request = fetchOf("bun");
 
@@ -396,7 +421,7 @@ describe("связка canRequest и isRequestSettled", () => {
 	});
 
 	it("весь заказ проходит цепочкой запросов в порядке рецепта", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		const cook = makeCook({ order });
 		const used: string[] = [];
 
@@ -404,8 +429,8 @@ describe("связка canRequest и isRequestSettled", () => {
 		while (guard < 10) {
 			guard++;
 			const next =
-				order.placed.length < order.target.length
-					? order.target[order.placed.length]
+				order.placed.length < order.recipe.layers.length
+					? order.recipe.layers[order.placed.length]
 					: undefined;
 
 			if (next === undefined) {

@@ -1,63 +1,99 @@
 import type { StationType } from "../assets/stations";
 import {
 	type ControlState,
+	type CookRequest,
 	isRequestSettled,
 	markActive,
 	rollIdleGoalMs,
 } from "../config/control";
 import {
 	CASH_REGISTER,
-	INGREDIENT_STATIONS,
+	type CarryItem,
+	isDish,
 	isOrderComplete,
-	type Item,
-	ITEM_BURGER,
+	type LayerItem,
+	neededNow,
 	nextNeeded,
 	type OrderState,
+	prepChain,
+	routeForLayer,
 	SERVING_COUNTER,
 } from "../config/recipes";
 import { stationFinder } from "../core/stations";
 import type { GameContext } from "../shared/context";
 
 function requestedType(
-	item: Item | null,
-	request: NonNullable<ControlState["request"]>,
+	carry: CarryItem | null,
+	order: OrderState | null | undefined,
+	request: CookRequest,
 ): StationType {
-	if (request.kind === "get-order") {
-		return SERVING_COUNTER;
-	}
+	switch (request.kind) {
+		case "get-order":
+			return SERVING_COUNTER;
 
-	if (request.kind === "deliver") {
-		return item === ITEM_BURGER ? CASH_REGISTER : SERVING_COUNTER;
-	}
+		case "deliver":
+			if (carry !== null && isDish(carry)) {
+				return CASH_REGISTER;
+			}
+			if (order && isOrderComplete(order)) {
+				return order.recipe.finishAt;
+			}
+			return SERVING_COUNTER;
 
-	return item === request.ingredient
-		? SERVING_COUNTER
-		: INGREDIENT_STATIONS[request.ingredient];
+		case "fetch":
+			if (!order) {
+				return SERVING_COUNTER;
+			}
+			return routeForLayer(
+				carry !== null && !isDish(carry) ? carry : null,
+				request.ingredient,
+				order.recipe,
+			);
+	}
 }
 
 function nextTargetType(
-	item: Item | null,
+	carry: CarryItem | null,
 	order: OrderState | null | undefined,
 	control: ControlState,
 ): StationType | undefined {
 	if (control.mode === "chat") {
-		return control.request ? requestedType(item, control.request) : undefined;
+		return control.request
+			? requestedType(carry, order, control.request)
+			: undefined;
 	}
 
-	if (item === ITEM_BURGER) {
+	if (carry !== null && isDish(carry)) {
 		return CASH_REGISTER;
 	}
 
-	if (item) {
+	if (!order) {
 		return SERVING_COUNTER;
 	}
 
-	if (!order || isOrderComplete(order)) {
-		return SERVING_COUNTER;
+	if (isOrderComplete(order)) {
+		return order.recipe.finishAt;
 	}
 
-	const needed = nextNeeded(order);
-	return needed ? INGREDIENT_STATIONS[needed] : undefined;
+	const carried = carry !== null && !isDish(carry) ? carry : null;
+	const needed = neededNow(order);
+
+	let layer: LayerItem | undefined =
+		carried !== null && needed.includes(carried) ? carried : undefined;
+
+	if (!layer && carried !== null) {
+		layer = needed.find((candidate) =>
+			prepChain(candidate).some((step) => step.from === carried),
+		);
+	}
+
+	layer ??= nextNeeded(order);
+
+	if (!layer) {
+		return undefined;
+	}
+
+	return routeForLayer(carried, layer, order.recipe);
 }
 
 export function createCookTargetingSystem(

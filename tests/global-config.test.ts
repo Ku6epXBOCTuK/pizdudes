@@ -2,7 +2,20 @@ import { World } from "miniplex";
 import { describe, expect, it } from "vitest";
 
 import { createControlState } from "../src/config/control";
-import { createCarryState, createOrder } from "../src/config/recipes";
+import {
+	createCarryState,
+	createOrder,
+	type DishRecipe,
+} from "../src/config/recipes";
+
+const TEST_RECIPE: DishRecipe = {
+	id: "test-recipe",
+	name: "Тестовый",
+	dish: "dish-burger",
+	layers: ["bun"],
+	order: "layered",
+	finishAt: "serving-counter",
+};
 import { createCookBadgeSystem } from "../src/systems/cook-badge";
 import { spawnGlobalConfig } from "../src/core/spawn";
 import type { CookBadge } from "../src/ui/cook-badge";
@@ -33,7 +46,7 @@ function badge(): CookBadge {
 		carry: { visible: false, position: { x: 0 } },
 		dots: graphics(),
 		bar: graphics(),
-		signature: -1,
+		signature: "",
 	} as unknown as CookBadge;
 }
 
@@ -41,7 +54,7 @@ function worldWithCook() {
 	const world = new World<Entity>();
 	const cook: Entity = {
 		position: { x: 100, y: 100 },
-		order: createOrder(["bun"]),
+		order: createOrder(TEST_RECIPE),
 		carry: createCarryState(),
 		control: createControlState("auto"),
 		badge: badge(),
@@ -118,7 +131,7 @@ describe("config в системе бейджей", () => {
 		] as const) {
 			world.add({
 				position: { x: 100, y },
-				order: createOrder(["bun"]),
+				order: createOrder(TEST_RECIPE),
 				carry: createCarryState(),
 				control: createControlState("auto"),
 				badge: entityBadge,
@@ -138,7 +151,7 @@ describe("config в системе бейджей", () => {
 		const world = new World<Entity>();
 		world.add({
 			position: { x: 100, y: 100 },
-			order: createOrder(["bun"]),
+			order: createOrder(TEST_RECIPE),
 			carry: createCarryState(),
 			control: createControlState("auto"),
 			badge: badge(),
@@ -170,7 +183,7 @@ describe("config в системе бейджей", () => {
 		world.clear();
 		world.add({
 			position: { x: 100, y: 100 },
-			order: createOrder(["bun"]),
+			order: createOrder(TEST_RECIPE),
 			carry: createCarryState(),
 			control: createControlState("auto"),
 			badge: badge(),

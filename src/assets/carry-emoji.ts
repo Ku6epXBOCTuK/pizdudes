@@ -1,16 +1,16 @@
 import { CanvasSource, Texture } from "pixi.js";
 
-import { CARRY_EMOJI } from "../config/items";
-import type { Item } from "../config/recipes";
+import { CATALOG_EMOJI } from "../config/items";
+import type { CarryItem } from "../config/recipes";
 
 const EMOJI_FONT =
 	'"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
 const SIZE = 32;
 const RESOLUTION = 2;
 
-let textures: Map<Item, Texture> | null = null;
+let textures: Map<CarryItem, Texture> | null = null;
 
-function draw(item: Item): Texture {
+function draw(item: CarryItem): Texture {
 	const canvas = document.createElement("canvas");
 	canvas.width = SIZE;
 	canvas.height = SIZE;
@@ -19,7 +19,7 @@ function draw(item: Item): Texture {
 	context.font = `${SIZE - 4}px ${EMOJI_FONT}`;
 	context.textAlign = "center";
 	context.textBaseline = "middle";
-	context.fillText(CARRY_EMOJI[item], SIZE / 2, SIZE / 2);
+	context.fillText(CATALOG_EMOJI[item], SIZE / 2, SIZE / 2);
 
 	return new Texture({
 		source: new CanvasSource({
@@ -30,15 +30,18 @@ function draw(item: Item): Texture {
 	});
 }
 
-export function loadCarryTextures(): Map<Item, Texture> {
+export function loadCarryTextures(): Map<CarryItem, Texture> {
 	textures ??= new Map(
-		(Object.keys(CARRY_EMOJI) as Item[]).map((item) => [item, draw(item)]),
+		(Object.keys(CATALOG_EMOJI) as CarryItem[]).map((item) => [
+			item,
+			draw(item),
+		]),
 	);
 
 	return textures;
 }
 
-export function carryTexture(item: Item | null): Texture | null {
+export function carryTexture(item: CarryItem | null): Texture | null {
 	if (!item) {
 		return null;
 	}

@@ -1,7 +1,7 @@
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 
 import { carryTexture } from "../assets/carry-emoji";
-import type { Item, OrderState } from "../config/recipes";
+import type { CarryItem, OrderState } from "../config/recipes";
 
 const LABEL_COLOR = 0xf2f4f8;
 const LABEL_FONT_SIZE = 12;
@@ -21,46 +21,19 @@ const ROW_OFFSET_Y = 14;
 const LABEL_OFFSET_Y = 30;
 const ROW_GAP = 6;
 
-const BADGE_SIGNATURE_NONE = -1;
-const PROGRESS_NONE = 255;
-const PROGRESS_STEPS = 254;
-
-const ITEM_ORDER: (Item | null)[] = [
-	null,
-	"bun",
-	"sauce",
-	"patty",
-	"cheese",
-	"salad",
-	"tomato",
-	"burger",
-];
-
-const ITEM_CODE = new Map<Item | null, number>(
-	ITEM_ORDER.map((item, index) => [item, index]),
-);
+const BADGE_SIGNATURE_NONE = "";
 
 export function badgeSignature(
 	order: OrderState | null,
-	carried: Item | null,
+	carried: CarryItem | null,
 	progress: number | null,
 	showNames: boolean,
-): number {
-	const item = ITEM_CODE.get(carried) ?? 0;
+): string {
 	const placed = order ? order.placed.length : 0;
-	const target = order ? order.target.length : 0;
-	const step =
-		progress === null
-			? PROGRESS_NONE
-			: Math.min(PROGRESS_STEPS, Math.floor(progress * PROGRESS_STEPS));
+	const target = order ? order.recipe.layers.length : 0;
+	const step = progress === null ? "" : progress.toFixed(3);
 
-	return (
-		(item << 25) |
-		(placed << 17) |
-		(target << 9) |
-		(step << 1) |
-		(showNames ? 1 : 0)
-	);
+	return [carried ?? "", placed, target, step, showNames ? 1 : 0].join("|");
 }
 
 export const BADGE_OFFSET_Y = 72;
@@ -71,7 +44,7 @@ export interface CookBadge {
 	carry: Sprite;
 	dots: Graphics;
 	bar: Graphics;
-	signature: number;
+	signature: string;
 }
 
 export function createCookBadge(name: string): CookBadge {
@@ -105,7 +78,7 @@ export function createCookBadge(name: string): CookBadge {
 export function drawCookBadge(
 	badge: CookBadge,
 	order: OrderState | null,
-	carried: Item | null,
+	carried: CarryItem | null,
 	progress: number | null,
 	showNames: boolean,
 ) {
@@ -130,7 +103,7 @@ export function drawCookBadge(
 		return;
 	}
 
-	const total = order.target.length;
+	const total = order.recipe.layers.length;
 	const placed = order.placed.length;
 
 	const carryWidth = badge.carry.visible ? CARRY_SIZE : 0;

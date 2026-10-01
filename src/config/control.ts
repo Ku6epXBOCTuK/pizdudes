@@ -1,10 +1,10 @@
 import { IDLE_WANDER_MAX_MS, IDLE_WANDER_MIN_MS } from "../constants";
 import {
+	type CarryItem,
 	type CarryState,
-	type Ingredient,
 	isOrderComplete,
 	type LayerItem,
-	nextNeeded,
+	neededNow,
 	type OrderState,
 } from "./recipes";
 
@@ -15,18 +15,10 @@ export type CookRequest =
 	| { kind: "fetch"; ingredient: CookRequestIngredient }
 	| { kind: "deliver" };
 
-export type CookRequestIngredient = Ingredient;
+export type CookRequestIngredient = LayerItem;
 
 export type ActionKind =
-	| "get-order"
-	| "take-ingredient"
-	| "place-ingredient"
-	| "take-burger"
-	| "take"
-	| "transform"
-	| "place"
-	| "finish"
-	| "sell";
+	"get-order" | "take" | "transform" | "place" | "finish" | "sell";
 
 export interface ActionDuration {
 	min: number;
@@ -35,9 +27,6 @@ export interface ActionDuration {
 
 export const ACTION_DURATIONS_MS: Record<ActionKind, ActionDuration> = {
 	"get-order": { min: 700, max: 1100 },
-	"take-ingredient": { min: 1000, max: 1400 },
-	"place-ingredient": { min: 700, max: 1100 },
-	"take-burger": { min: 800, max: 1200 },
 	take: { min: 1000, max: 1400 },
 	transform: { min: 1500, max: 2200 },
 	place: { min: 700, max: 1100 },
@@ -48,7 +37,7 @@ export const ACTION_DURATIONS_MS: Record<ActionKind, ActionDuration> = {
 export interface ActionState {
 	kind: ActionKind;
 	progress: number;
-	item: Ingredient | LayerItem | null;
+	item: CarryItem | null;
 	durationMs: number;
 }
 
@@ -92,7 +81,7 @@ export function markActive(control: ControlState) {
 export function startAction(
 	control: ControlState,
 	kind: ActionKind,
-	item: Ingredient | LayerItem | null = null,
+	item: CarryItem | null = null,
 	random: () => number = Math.random,
 ) {
 	const { min, max } = ACTION_DURATIONS_MS[kind];
@@ -142,7 +131,7 @@ export function canRequest(request: CookRequest, cook: CookProgress): boolean {
 				!carry.item &&
 				!!order &&
 				!isOrderComplete(order) &&
-				nextNeeded(order) === request.ingredient
+				neededNow(order).includes(request.ingredient)
 			);
 	}
 }
@@ -163,7 +152,7 @@ export function isRequestSettled(
 		case "fetch":
 			return (
 				carry.item !== request.ingredient &&
-				(!order || nextNeeded(order) !== request.ingredient)
+				(!order || !neededNow(order).includes(request.ingredient))
 			);
 	}
 }

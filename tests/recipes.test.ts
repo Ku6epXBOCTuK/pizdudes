@@ -2,26 +2,43 @@ import { describe, expect, it } from "vitest";
 
 import { STATION_TYPES } from "../src/assets/stations";
 import {
+	chainRoot,
 	createOrder,
 	createCarryState,
 	DISH_RECIPES,
 	DISHES,
-	INGREDIENTS,
+	type DishRecipe,
 	isOrderComplete,
-	ITEM_BURGER,
 	type LayerItem,
+	missingLayers,
 	nextNeeded,
-	pickRecipe,
+	pickDishRecipe,
+	placeStation,
 	PREP,
+	prepChain,
 	RAW_ITEM_STATION,
 	RAW_ITEMS,
-	RECIPES,
-	RECIPE_BURGER,
+	routeForLayer,
 	SEMI_ITEMS,
 	type SemiItem,
 	STATION_FINISHES,
-	type Ingredient,
+	transformResult,
 } from "../src/config/recipes";
+
+function makeRecipe(
+	layers: LayerItem[],
+	overrides: Partial<DishRecipe> = {},
+): DishRecipe {
+	return {
+		id: "test-recipe",
+		name: "Тестовый",
+		dish: "dish-burger",
+		layers,
+		order: "layered",
+		finishAt: "serving-counter",
+		...overrides,
+	};
+}
 
 function isSemi(item: LayerItem): item is SemiItem {
 	return (SEMI_ITEMS as readonly string[]).includes(item);
@@ -46,95 +63,47 @@ function expandChain(item: LayerItem): Set<LayerItem> {
 	return seen;
 }
 
-describe("рецепты", () => {
-	it("задаёт хотя бы один рецепт", () => {
-		expect(RECIPES.length).toBeGreaterThan(0);
-	});
-
-	it("все ингредиенты рецептов объявлены в INGREDIENTS", () => {
-		for (const recipe of RECIPES) {
-			for (const item of recipe) {
-				expect(INGREDIENTS).toContain(item);
-			}
-		}
-	});
-
-	it("ингредиенты рецепта не повторяются подряд", () => {
-		// два одинаковых слоя подряд не имеют кулинарного смысла
-		for (const recipe of RECIPES) {
-			for (let i = 1; i < recipe.length; i++) {
-				expect(recipe[i]).not.toBe(recipe[i - 1]);
-			}
-		}
-	});
-
-	it("рецепт заканчивается основой бургера", () => {
-		for (const recipe of RECIPES) {
-			expect(recipe.at(-1)).toBe("bun");
-			expect(recipe[0]).toBe("bun");
-		}
-	});
-
-	it("пицца не проходит валидацию рецепта бургера", () => {
-		expect(() =>
-			createOrder(["bun", "pizza", "bun"] as Ingredient[]),
-		).toThrow();
-	});
-});
-
-describe("pickRecipe", () => {
-	it("всегда возвращает копию, а не ссылку на RECIPES", () => {
-		const original = pickRecipe();
-		const length = original.length;
-		const source = RECIPES.find((recipe) => recipe.length === length);
-		original.push("bun");
-
-		expect(original.length).toBe(length + 1);
-		expect(source === undefined || source.length === length).toBe(true);
-	});
-
+describe("pickDishRecipe", () => {
 	it("при random()=0 берёт первый рецепт, при ~1 — последний", () => {
-		expect(pickRecipe(() => 0)).toEqual(RECIPES[0]);
-		expect(pickRecipe(() => 0.999999)).toEqual(RECIPES.at(-1));
+		expect(pickDishRecipe(() => 0)).toEqual(DISH_RECIPES[0]);
+		expect(pickDishRecipe(() => 0.999999)).toEqual(DISH_RECIPES.at(-1));
 	});
 
 	it("остаётся в границах при любом random", () => {
 		for (const value of [0, 0.25, 0.5, 0.75, 0.999999]) {
-			expect(pickRecipe(() => value)).toEqual(
-				RECIPES[Math.floor(value * RECIPES.length)],
+			expect(pickDishRecipe(() => value)).toEqual(
+				DISH_RECIPES[Math.floor(value * DISH_RECIPES.length)],
 			);
 		}
 	});
 });
 
 describe("createOrder", () => {
-	it("placed пустой, target совпадает с рецептом", () => {
-		const order = createOrder();
-
-		expect(order.placed).toEqual([]);
-		expect(order.target).toEqual(RECIPE_BURGER);
-	});
-
-	it("target не разделяется с переданным рецептом", () => {
-		const recipe: Ingredient[] = ["bun", "cheese", "bun"];
+	it("placed пустой, рецепт совпадает с переданным", () => {
+		const recipe = makeRecipe(["bun", "cheese", "bun"]);
 		const order = createOrder(recipe);
 
-		order.placed.push("bun");
-
-		expect(recipe).toEqual(["bun", "cheese", "bun"]);
+		expect(order.placed).toEqual([]);
+		expect(order.recipe).toBe(recipe);
 	});
 
-	it("выдаёт заказ из рецепта, если он не передан", () => {
-		const order = createOrder(RECIPES[0]);
+	it("выдаёт заказ из каталога, если рецепт не передан", () => {
+		const order = createOrder();
 
-		expect(order.target).toEqual(RECIPES[0]);
+		expect(DISH_RECIPES).toContainEqual(order.recipe);
+	});
+
+	it("бросает ошибку на неизвестном слое", () => {
+		expect(() =>
+			createOrder(makeRecipe(["bun", "dish-pizza" as LayerItem, "bun"])),
+		).toThrow();
 	});
 });
 
 describe("nextNeeded", () => {
-	it("идёт по слоям строго в порядке рецепта", () => {
-		const order = createOrder(["bun", "cheese", "patty", "bun"]);
-		const taken: Ingredient[] = [];
+	it("layered: идёт по слоям строго в порядке рецепта", () => {
+		const order = createOrder(makeRecipe(["bun", "cheese", "patty", "bun"]));
+		const taken: LayerItem[] = [];
 
 		while (true) {
 			const next = nextNeeded(order);
@@ -148,7 +117,7 @@ describe("nextNeeded", () => {
 
 	it("дубликаты в рецепте не теряются", () => {
 		// регрессия: поиск через placed.includes() считал второй bun уже взятым
-		const order = createOrder(["bun", "cheese", "bun"]);
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		order.placed.push("bun");
 
 		expect(nextNeeded(order)).toBe("cheese");
@@ -157,19 +126,25 @@ describe("nextNeeded", () => {
 		expect(nextNeeded(order)).toBe("bun");
 	});
 
+	it("assorted: возвращает любой недостающий слой", () => {
+		const order = createOrder(
+			makeRecipe(["bun", "cheese", "bun"], { order: "assorted" }),
+		);
+		order.placed.push("bun");
+
+		expect(missingLayers(order)).toEqual(["cheese", "bun"]);
+		expect(nextNeeded(order)).toBe("cheese");
+	});
+
 	it("возвращает undefined на собранном заказе", () => {
-		const order = createOrder(["bun", "bun"]);
-		order.placed.push("bun", "bun");
+		const order = createOrder(makeRecipe(["bun"]));
+		order.placed.push("bun");
 
 		expect(nextNeeded(order)).toBeUndefined();
 	});
 
-	it("undefined на пустом рецепте", () => {
-		expect(nextNeeded(createOrder([]))).toBeUndefined();
-	});
-
 	it("не падает при лишних элементах в placed", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun", "bun", "bun");
 
 		expect(nextNeeded(order)).toBeUndefined();
@@ -178,25 +153,86 @@ describe("nextNeeded", () => {
 
 describe("isOrderComplete", () => {
 	it("false на пустом заказе с непустым рецептом", () => {
-		expect(isOrderComplete(createOrder(["bun"]))).toBe(false);
+		expect(isOrderComplete(createOrder(makeRecipe(["bun"])))).toBe(false);
 	});
 
-	it("true когда placed догнал target", () => {
-		const order = createOrder(["bun", "cheese", "bun"]);
+	it("true когда placed догнал рецепт", () => {
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
 		order.placed.push("bun", "cheese", "bun");
 
 		expect(isOrderComplete(order)).toBe(true);
 	});
 
-	it("true на заказе без слоёв", () => {
-		expect(isOrderComplete(createOrder([]))).toBe(true);
-	});
-
 	it("true при лишних элементах в placed", () => {
-		const order = createOrder(["bun"]);
+		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun", "bun");
 
 		expect(isOrderComplete(order)).toBe(true);
+	});
+});
+
+describe("цепочки подготовки", () => {
+	it("сырьё не имеет цепочки", () => {
+		expect(prepChain("tomato")).toEqual([]);
+	});
+
+	it("одношаговая цепочка нарезки", () => {
+		expect(prepChain("chopped-tomato")).toEqual([
+			{ from: "tomato", at: "cutting-board" },
+		]);
+	});
+
+	it("многошаговая цепочка разворачивается от сырья к продукту", () => {
+		expect(prepChain("pizza-base")).toEqual([
+			{ from: "flour", at: "dough-mixer" },
+			{ from: "dough", at: "pizza-oven" },
+		]);
+	});
+
+	it("chainRoot возвращает сырое начало цепочки", () => {
+		expect(chainRoot("bun")).toBe("bun");
+		expect(chainRoot("pizza-base")).toBe("flour");
+		expect(chainRoot("tomato-sauce")).toBe("tomato");
+	});
+
+	it("transformResult находит продукт по предмету и станции", () => {
+		expect(transformResult("tomato", "cutting-board")).toBe("chopped-tomato");
+		expect(transformResult("dough", "pizza-oven")).toBe("pizza-base");
+		expect(transformResult("tomato", "grill")).toBeNull();
+	});
+});
+
+describe("маршрутизация слоя", () => {
+	it("супы собираются сразу в кастрюле", () => {
+		const soup = makeRecipe(["beans"], {
+			dish: "dish-soup",
+			finishAt: "stove-pot",
+		});
+
+		expect(placeStation(soup)).toBe("stove-pot");
+		expect(placeStation(makeRecipe(["bun"]))).toBe("serving-counter");
+	});
+
+	it("пустые руки ведут к полке с корнем цепочки", () => {
+		const recipe = makeRecipe(["pizza-base"]);
+
+		expect(routeForLayer(null, "pizza-base", recipe)).toBe("pantry-shelf");
+		expect(routeForLayer(null, "bun", recipe)).toBe("bun-shelf");
+	});
+
+	it("промежуточный полуфабрикат ведёт на следующую станцию цепочки", () => {
+		const recipe = makeRecipe(["pizza-base"]);
+
+		expect(routeForLayer("flour", "pizza-base", recipe)).toBe("dough-mixer");
+		expect(routeForLayer("dough", "pizza-base", recipe)).toBe("pizza-oven");
+	});
+
+	it("готовый слой ведёт на станцию выкладки", () => {
+		const recipe = makeRecipe(["chopped-tomato"]);
+
+		expect(routeForLayer("chopped-tomato", "chopped-tomato", recipe)).toBe(
+			"serving-counter",
+		);
 	});
 });
 
@@ -207,7 +243,7 @@ describe("createCarryState", () => {
 
 	it("каждый вызов даёт независимый объект", () => {
 		const first = createCarryState();
-		first.item = ITEM_BURGER;
+		first.item = "dish-burger";
 
 		expect(createCarryState()).toEqual({ item: null });
 	});

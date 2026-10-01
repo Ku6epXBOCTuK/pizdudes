@@ -1,81 +1,8 @@
 import type { StationType } from "../assets/stations";
 
-export const INGREDIENTS = [
-	"bun",
-	"sauce",
-	"patty",
-	"cheese",
-	"salad",
-	"tomato",
-] as const;
-
-export type Ingredient = (typeof INGREDIENTS)[number];
-
-export const ITEM_BURGER = "burger" as const;
-
-export type Item = Ingredient | typeof ITEM_BURGER;
-
-export const INGREDIENT_STATIONS: Record<Ingredient, StationType> = {
-	bun: "bun-shelf",
-	sauce: "pantry-shelf",
-	patty: "grill",
-	cheese: "dairy-shelf",
-	salad: "produce-shelf",
-	tomato: "produce-shelf",
-};
-
 export const SERVING_COUNTER = "serving-counter";
 
 export const CASH_REGISTER = "cash-register";
-
-export const RECIPE_BURGER: Ingredient[] = [
-	"bun",
-	"sauce",
-	"patty",
-	"cheese",
-	"salad",
-	"tomato",
-	"bun",
-];
-
-export const RECIPES: Ingredient[][] = [RECIPE_BURGER];
-
-export interface OrderState {
-	target: Ingredient[];
-	placed: Ingredient[];
-}
-
-export interface CarryState {
-	item: Item | null;
-}
-
-export function pickRecipe(random: () => number = Math.random): Ingredient[] {
-	return [...RECIPES[Math.floor(random() * RECIPES.length)]!];
-}
-
-export function isValidRecipe(recipe: readonly Ingredient[]): boolean {
-	return recipe.every((item) => INGREDIENTS.includes(item));
-}
-
-export function createOrder(recipe = pickRecipe()): OrderState {
-	if (!isValidRecipe(recipe)) {
-		throw new Error(`Неизвестный ингредиент в рецепте: ${recipe.join(", ")}`);
-	}
-
-	return { target: [...recipe], placed: [] };
-}
-
-export function createCarryState(): CarryState {
-	return { item: null };
-}
-
-export function nextNeeded(order: OrderState): Ingredient | undefined {
-	return order.target[order.placed.length];
-}
-
-export function isOrderComplete(order: OrderState): boolean {
-	return order.placed.length >= order.target.length;
-}
 
 export const RAW_ITEMS = [
 	"bun",
@@ -615,3 +542,132 @@ export const DISH_RECIPES: DishRecipe[] = [
 		finishAt: "grill",
 	},
 ];
+
+export type CarryItem = LayerItem | Dish;
+
+export interface OrderState {
+	recipe: DishRecipe;
+	placed: LayerItem[];
+}
+
+export interface CarryState {
+	item: CarryItem | null;
+}
+
+export function isSemiItem(item: CarryItem): item is SemiItem {
+	return (SEMI_ITEMS as readonly string[]).includes(item);
+}
+
+export function isDish(item: CarryItem): item is Dish {
+	return (DISHES as readonly string[]).includes(item);
+}
+
+export function pickDishRecipe(random: () => number = Math.random): DishRecipe {
+	return DISH_RECIPES[Math.floor(random() * DISH_RECIPES.length)]!;
+}
+
+export function createOrder(recipe: DishRecipe = pickDishRecipe()): OrderState {
+	const known: readonly string[] = [...RAW_ITEMS, ...SEMI_ITEMS];
+	const unknown = recipe.layers.find((layer) => !known.includes(layer));
+
+	if (unknown) {
+		throw new Error(`Неизвестный слой в рецепте ${recipe.id}: ${unknown}`);
+	}
+
+	return { recipe, placed: [] };
+}
+
+export function createCarryState(): CarryState {
+	return { item: null };
+}
+
+export function missingLayers(order: OrderState): LayerItem[] {
+	const remaining = [...order.placed];
+
+	return order.recipe.layers.filter((layer) => {
+		const index = remaining.indexOf(layer);
+		if (index < 0) {
+			return true;
+		}
+		remaining.splice(index, 1);
+		return false;
+	});
+}
+
+export function neededNow(order: OrderState): LayerItem[] {
+	if (order.recipe.order === "assorted") {
+		return missingLayers(order);
+	}
+
+	const next = order.recipe.layers[order.placed.length];
+	return next === undefined ? [] : [next];
+}
+
+export function nextNeeded(order: OrderState): LayerItem | undefined {
+	return neededNow(order)[0];
+}
+
+export function isOrderComplete(order: OrderState): boolean {
+	return missingLayers(order).length === 0;
+}
+
+export function prepChain(item: LayerItem): PrepStep[] {
+	const chain: PrepStep[] = [];
+
+	const visit = (current: LayerItem) => {
+		if (!isSemiItem(current)) {
+			return;
+		}
+		for (const step of PREP[current]) {
+			visit(step.from);
+			chain.push(step);
+		}
+	};
+
+	visit(item);
+	return chain;
+}
+
+export function chainRoot(item: LayerItem): RawItem {
+	const chain = prepChain(item);
+
+	if (chain.length === 0) {
+		return item as RawItem;
+	}
+
+	return chain[0]!.from as RawItem;
+}
+
+export function transformResult(
+	item: CarryItem,
+	station: StationType,
+): SemiItem | null {
+	for (const semi of SEMI_ITEMS) {
+		if (PREP[semi].some((step) => step.from === item && step.at === station)) {
+			return semi;
+		}
+	}
+
+	return null;
+}
+
+export function placeStation(recipe: DishRecipe): StationType {
+	return recipe.finishAt === "stove-pot" ? "stove-pot" : SERVING_COUNTER;
+}
+
+export function routeForLayer(
+	carry: LayerItem | null,
+	layer: LayerItem,
+	recipe: DishRecipe,
+): StationType {
+	if (carry === layer) {
+		return placeStation(recipe);
+	}
+
+	if (carry === null) {
+		return RAW_ITEM_STATION[chainRoot(layer)];
+	}
+
+	const step = prepChain(layer).find((s) => s.from === carry);
+	return step ? step.at : placeStation(recipe);
+}
