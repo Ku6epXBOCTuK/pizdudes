@@ -1,24 +1,29 @@
 import { IDLE_WANDER_MAX_MS, IDLE_WANDER_MIN_MS } from "../constants";
+import type { StationType } from "../assets/stations";
 import {
 	type CarryItem,
 	type CarryState,
+	isDish,
 	isOrderComplete,
 	type LayerItem,
 	neededNow,
 	type OrderState,
+	RAW_ITEMS,
+	transformResult,
 } from "./recipes";
 
 export type ControlMode = "auto" | "chat";
 
 export type CookRequest =
 	| { kind: "get-order" }
-	| { kind: "fetch"; ingredient: CookRequestIngredient }
+	| { kind: "take"; item: LayerItem }
+	| { kind: "transform"; at: StationType }
+	| { kind: "place" }
+	| { kind: "drop" }
 	| { kind: "deliver" };
 
-export type CookRequestIngredient = LayerItem;
-
 export type ActionKind =
-	"get-order" | "take" | "transform" | "place" | "finish" | "sell";
+	"get-order" | "take" | "transform" | "place" | "drop" | "finish" | "sell";
 
 export interface ActionDuration {
 	min: number;
@@ -30,6 +35,7 @@ export const ACTION_DURATIONS_MS: Record<ActionKind, ActionDuration> = {
 	take: { min: 1000, max: 1400 },
 	transform: { min: 1500, max: 2200 },
 	place: { min: 700, max: 1100 },
+	drop: { min: 400, max: 700 },
 	finish: { min: 800, max: 1200 },
 	sell: { min: 1200, max: 1600 },
 };
@@ -123,15 +129,35 @@ export function canRequest(request: CookRequest, cook: CookProgress): boolean {
 		case "get-order":
 			return !order;
 
-		case "deliver":
-			return !carry.item && !!order && isOrderComplete(order);
-
-		case "fetch":
+		case "take":
 			return (
-				!carry.item &&
+				!carry.item && (RAW_ITEMS as readonly string[]).includes(request.item)
+			);
+
+		case "transform":
+			return (
+				carry.item !== null &&
+				!isDish(carry.item) &&
+				transformResult(carry.item, request.at) !== null
+			);
+
+		case "place":
+			return (
+				carry.item !== null &&
+				!isDish(carry.item) &&
 				!!order &&
 				!isOrderComplete(order) &&
-				neededNow(order).includes(request.ingredient)
+				neededNow(order).includes(carry.item)
+			);
+
+		case "drop":
+			return carry.item !== null;
+
+		case "deliver":
+			return (
+				!!order &&
+				isOrderComplete(order) &&
+				(carry.item === null || isDish(carry.item))
 			);
 	}
 }
@@ -146,13 +172,21 @@ export function isRequestSettled(
 		case "get-order":
 			return !!order;
 
+		case "take":
+			return carry.item === request.item;
+
+		case "transform":
+			return (
+				carry.item === null ||
+				isDish(carry.item) ||
+				transformResult(carry.item, request.at) === null
+			);
+
+		case "place":
+		case "drop":
+			return carry.item === null;
+
 		case "deliver":
 			return !carry.item && !order;
-
-		case "fetch":
-			return (
-				carry.item !== request.ingredient &&
-				(!order || !neededNow(order).includes(request.ingredient))
-			);
 	}
 }

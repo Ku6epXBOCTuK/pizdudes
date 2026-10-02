@@ -244,7 +244,7 @@ describe("chat-режим", () => {
 		expect(typeOf(c)).toBeNull();
 	});
 
-	it("!взять ведёт к serving-станции", () => {
+	it("!заказ ведёт к выдаче", () => {
 		const cook = chatCook();
 		const h = harness([cook]);
 
@@ -254,31 +254,66 @@ describe("chat-режим", () => {
 		expect(typeOf(cookOf(h, "viewer"))).toBe("serving-counter");
 	});
 
-	it("!положи ведёт сначала к полке, потом к столу", () => {
+	it("!взять ведёт к полке, !положи — к выдаче", () => {
 		const cook = chatCook({
 			order: createOrder(makeRecipe(["bun", "cheese", "bun"])),
 		});
 		const h = harness([cook]);
 
-		issue(h, { kind: "fetch", ingredient: "bun" });
+		issue(h, { kind: "take", item: "bun" });
 		h.step(0.1);
 		expect(typeOf(cookOf(h, "viewer"))).toBe("bun-shelf");
 
 		const c = cookOf(h, "viewer");
-		let wentToCounter = false;
-		let fetched = false;
 
 		for (let i = 0; i < 60 * 60; i++) {
 			h.tick();
-			if (typeOf(c) === "serving-counter") wentToCounter = true;
-			if (c.carry?.item === "bun") fetched = true;
+			if (c.carry?.item === "bun") break;
+		}
+
+		h.step(0.2);
+
+		expect(c.carry?.item).toBe("bun");
+		expect(c.control?.request).toBeNull();
+
+		issue(h, { kind: "place" });
+		h.step(0.1);
+		expect(typeOf(c)).toBe("serving-counter");
+
+		for (let i = 0; i < 60 * 60; i++) {
+			h.tick();
 			if (c.order?.placed.length === 1) break;
 		}
 
-		expect(fetched).toBe(true);
-		expect(wentToCounter).toBe(true);
+		h.step(0.2);
+
 		expect(c.order?.placed).toEqual(["bun"]);
 		expect(c.carry?.item).toBeNull();
+		expect(c.control?.request).toBeNull();
+	});
+
+	it("!резать ведёт к доске и нарезает несомое", () => {
+		const cook = chatCook({
+			order: createOrder(makeRecipe(["chopped-tomato"])),
+			carry: { item: "tomato" },
+		});
+		const h = harness([cook]);
+
+		issue(h, { kind: "transform", at: "cutting-board" });
+		h.step(0.1);
+
+		const c = cookOf(h, "viewer");
+		expect(typeOf(c)).toBe("cutting-board");
+
+		for (let i = 0; i < 60 * 60; i++) {
+			h.tick();
+			if (c.carry?.item === "chopped-tomato") break;
+		}
+
+		h.step(0.2);
+
+		expect(c.carry?.item).toBe("chopped-tomato");
+		expect(c.control?.request).toBeNull();
 	});
 
 	it("!отдать ведёт на кассу, когда несёт бургер", () => {
@@ -305,16 +340,37 @@ describe("chat-режим", () => {
 		expect(c.order).not.toBeNull();
 	});
 
-	it("запрос сбрасывается только один раз, повар не бежит по кругу", () => {
+	it("!выкинь ведёт к ведру и освобождает руки", () => {
+		const cook = chatCook({ carry: { item: "tomato" } });
+		const h = harness([cook]);
+
+		issue(h, { kind: "drop" });
+		h.step(0.1);
+
+		const c = cookOf(h, "viewer");
+		expect(typeOf(c)).toBe("trash-can");
+
+		for (let i = 0; i < 60 * 60; i++) {
+			h.tick();
+			if (c.carry?.item === null) break;
+		}
+
+		h.step(0.2);
+
+		expect(c.carry?.item).toBeNull();
+		expect(c.control?.request).toBeNull();
+	});
+
+	it("выполненный запрос сбрасывается, повар не бежит по кругу", () => {
 		const cook = chatCook({ order: createOrder(makeRecipe(["bun"])) });
 		const h = harness([cook]);
 
-		issue(h, { kind: "fetch", ingredient: "bun" });
+		issue(h, { kind: "take", item: "bun" });
 		h.step(20);
 
 		const c = cookOf(h, "viewer");
 		expect(c.control?.request).toBeNull();
-		expect(c.carry?.item).toBeNull();
+		expect(c.carry?.item).toBe("bun");
 		expect(typeOf(c)).toBeNull();
 	});
 });

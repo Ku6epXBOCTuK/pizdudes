@@ -69,22 +69,56 @@ describe("parseDevCommand", () => {
 	);
 });
 
-describe("тестовые команды не конфликтуют с игровыми", () => {
-	it("!взять остаётся игровой командой", () => {
-		expect(parseCommand("!взять")).toEqual({ kind: "get-order" });
-		expect(parseDevCommand("!взять")).toBeNull();
+describe("игровые команды новой модели", () => {
+	it.each([
+		["!резать", "cutting-board"],
+		["!жарить", "grill"],
+		["!варить", "stove-pot"],
+		["!месить", "dough-mixer"],
+		["!печь", "pizza-oven"],
+	] as const)("%s → transform на %s", (word, at) => {
+		expect(parseCommand(word)).toEqual({ kind: "transform", at });
 	});
 
-	it.each(["!положить сыр", "!положи сыр"])(
-		"%s остаётся игровой командой",
-		(text) => {
-			expect(parseCommand(text)).toEqual({
-				kind: "fetch",
-				ingredient: "cheese",
-			});
-			expect(parseDevCommand(text)).toBeNull();
-		},
-	);
+	it("!взять с неизвестным предметом не распознаётся", () => {
+		expect(parseCommand("!взять вилку")).toBeNull();
+	});
+
+	it("!взять понимает русские подписи и id", () => {
+		expect(parseCommand("!взять помидор")).toEqual({
+			kind: "take",
+			item: "tomato",
+		});
+		expect(parseCommand("!взять tomato")).toEqual({
+			kind: "take",
+			item: "tomato",
+		});
+	});
+});
+
+describe("тестовые команды не конфликтуют с игровыми", () => {
+	it("!заказ остаётся игровой командой", () => {
+		expect(parseCommand("!заказ")).toEqual({ kind: "get-order" });
+		expect(parseDevCommand("!заказ")).toBeNull();
+	});
+
+	it.each(["!положить", "!положи"])("%s остаётся игровой командой", (text) => {
+		expect(parseCommand(text)).toEqual({ kind: "place" });
+		expect(parseDevCommand(text)).toBeNull();
+	});
+
+	it("!взять сыр остаётся игровой командой", () => {
+		expect(parseCommand("!взять сыр")).toEqual({
+			kind: "take",
+			item: "cheese",
+		});
+		expect(parseDevCommand("!взять сыр")).toBeNull();
+	});
+
+	it("!выкинь остаётся игровой командой", () => {
+		expect(parseCommand("!выкинь")).toEqual({ kind: "drop" });
+		expect(parseDevCommand("!выкинь")).toBeNull();
+	});
 
 	it("!отдать остаётся игровой командой", () => {
 		expect(parseCommand("!отдать")).toEqual({ kind: "deliver" });

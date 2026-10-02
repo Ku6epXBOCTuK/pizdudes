@@ -9,15 +9,19 @@ import {
 import {
 	CASH_REGISTER,
 	type CarryItem,
+	chainRoot,
 	isDish,
 	isOrderComplete,
 	type LayerItem,
 	neededNow,
 	nextNeeded,
 	type OrderState,
+	placeStation,
 	prepChain,
+	RAW_ITEM_STATION,
 	routeForLayer,
 	SERVING_COUNTER,
+	TRASH_CAN,
 } from "../config/recipes";
 import { stationFinder } from "../core/stations";
 import type { GameContext } from "../shared/context";
@@ -31,6 +35,18 @@ function requestedType(
 		case "get-order":
 			return SERVING_COUNTER;
 
+		case "take":
+			return RAW_ITEM_STATION[chainRoot(request.item)];
+
+		case "transform":
+			return request.at;
+
+		case "place":
+			return order ? placeStation(order.recipe) : SERVING_COUNTER;
+
+		case "drop":
+			return TRASH_CAN;
+
 		case "deliver":
 			if (carry !== null && isDish(carry)) {
 				return CASH_REGISTER;
@@ -39,16 +55,6 @@ function requestedType(
 				return order.recipe.finishAt;
 			}
 			return SERVING_COUNTER;
-
-		case "fetch":
-			if (!order) {
-				return SERVING_COUNTER;
-			}
-			return routeForLayer(
-				carry !== null && !isDish(carry) ? carry : null,
-				request.ingredient,
-				order.recipe,
-			);
 	}
 }
 

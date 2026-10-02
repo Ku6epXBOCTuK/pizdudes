@@ -19,6 +19,7 @@ import {
 	prepChain,
 	RAW_ITEM_STATION,
 	SERVING_COUNTER,
+	TRASH_CAN,
 	transformResult,
 } from "../config/recipes";
 import type { Entity } from "../core/world";
@@ -31,11 +32,35 @@ type ActionPlan = { kind: ActionKind; item: CarryItem | null };
 function planAction(target: StationType, cook: OrderCook): ActionPlan | null {
 	const carry = cook.carry.item;
 	const order = cook.order ?? null;
+	const request = cook.control.request;
 
 	if (target === CASH_REGISTER) {
 		return order && carry !== null && isDish(carry)
 			? { kind: "sell", item: null }
 			: null;
+	}
+
+	if (request?.kind === "take" && carry === null) {
+		const root = chainRoot(request.item);
+
+		return target === RAW_ITEM_STATION[root]
+			? { kind: "take", item: root }
+			: null;
+	}
+
+	if (request?.kind === "drop" && carry !== null) {
+		return target === TRASH_CAN ? { kind: "drop", item: null } : null;
+	}
+
+	if (
+		request?.kind === "transform" &&
+		carry !== null &&
+		!isDish(carry) &&
+		target === request.at
+	) {
+		const result = transformResult(carry, target);
+
+		return result ? { kind: "transform", item: result } : null;
 	}
 
 	if (!order) {
@@ -54,33 +79,32 @@ function planAction(target: StationType, cook: OrderCook): ActionPlan | null {
 			: null;
 	}
 
-	const requested =
-		cook.control.request?.kind === "fetch"
-			? cook.control.request.ingredient
-			: null;
-	const candidates = neededNow(order);
-	const layer =
-		requested && candidates.includes(requested) ? requested : candidates[0];
-
-	if (!layer) {
-		return null;
-	}
-
 	if (carry !== null) {
-		if (carry === layer) {
+		const needed = neededNow(order);
+
+		if (needed.includes(carry)) {
 			return target === placeStation(order.recipe)
 				? { kind: "place", item: carry }
 				: null;
 		}
 
-		const step = prepChain(layer).find(
-			(s) => s.from === carry && s.at === target,
+		const layer = needed.find((candidate) =>
+			prepChain(candidate).some((step) => step.from === carry),
 		);
+		const step = layer
+			? prepChain(layer).find((s) => s.from === carry && s.at === target)
+			: undefined;
 
 		if (step) {
 			return { kind: "transform", item: transformResult(carry, target) };
 		}
 
+		return null;
+	}
+
+	const layer = neededNow(order)[0];
+
+	if (!layer) {
 		return null;
 	}
 
@@ -106,6 +130,10 @@ function applyAction(cook: OrderCook, action: ActionState) {
 			if (action.item && cook.order && !isDish(action.item)) {
 				cook.order.placed.push(action.item);
 			}
+			cook.carry.item = null;
+			return;
+
+		case "drop":
 			cook.carry.item = null;
 			return;
 

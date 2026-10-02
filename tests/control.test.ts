@@ -52,11 +52,14 @@ function makeCook(overrides: Partial<CookState> = {}) {
 	};
 }
 
-const TAKE: CookRequest = { kind: "get-order" };
+const ORDER: CookRequest = { kind: "get-order" };
 const DELIVER: CookRequest = { kind: "deliver" };
-const fetchOf = (ingredient: LayerItem): CookRequest => ({
-	kind: "fetch",
-	ingredient,
+const PLACE: CookRequest = { kind: "place" };
+const DROP: CookRequest = { kind: "drop" };
+const takeOf = (item: LayerItem): CookRequest => ({ kind: "take", item });
+const transformAt = (at: "cutting-board" | "grill"): CookRequest => ({
+	kind: "transform",
+	at,
 });
 
 describe("createControlState", () => {
@@ -198,8 +201,8 @@ describe("работа у станции", () => {
 		const cook = makeCook({ order });
 		startAction(cook.control, "take");
 
-		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
-		expect(canRequest(TAKE, cook)).toBe(false);
+		expect(canRequest(takeOf("bun"), cook)).toBe(false);
+		expect(canRequest(ORDER, cook)).toBe(false);
 		expect(canRequest(DELIVER, cook)).toBe(false);
 	});
 
@@ -209,7 +212,7 @@ describe("работа у станции", () => {
 		startAction(cook.control, "take");
 		advanceAction(cook.control, cook.control.action?.durationMs ?? 0);
 
-		expect(canRequest(fetchOf("bun"), cook)).toBe(true);
+		expect(canRequest(takeOf("bun"), cook)).toBe(true);
 	});
 });
 
@@ -225,78 +228,129 @@ describe("markActive", () => {
 
 	it("не трогает режим и запрос", () => {
 		const control = createControlState("chat");
-		control.request = TAKE;
+		control.request = ORDER;
 
 		markActive(control);
 
 		expect(control.mode).toBe("chat");
-		expect(control.request).toBe(TAKE);
+		expect(control.request).toBe(ORDER);
 	});
 });
 
 describe("canRequest: get-order", () => {
 	it("разрешён, когда заказа нет", () => {
-		expect(canRequest(TAKE, makeCook({ order: null }))).toBe(true);
+		expect(canRequest(ORDER, makeCook({ order: null }))).toBe(true);
 	});
 
 	it("запрещён, когда заказ уже есть", () => {
-		expect(canRequest(TAKE, makeCook({ order: createOrder() }))).toBe(false);
+		expect(canRequest(ORDER, makeCook({ order: createOrder() }))).toBe(false);
 	});
 });
 
-describe("canRequest: fetch", () => {
-	it("разрешён для следующего по рецепту слоя", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
+describe("canRequest: take", () => {
+	it("разрешён для сырья с пустыми руками, заказ не обязателен", () => {
+		expect(canRequest(takeOf("bun"), makeCook({ order: null }))).toBe(true);
 
-		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
+		const order = createOrder(makeRecipe(["bun", "cheese"]));
+		expect(canRequest(takeOf("bun"), makeCook({ order }))).toBe(true);
 	});
 
-	it("запрещён для слоя не по порядку", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
-
-		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(false);
-	});
-
-	it("assorted: разрешён любой недостающий слой, не только первый", () => {
-		const order = createOrder(
-			makeRecipe(["bun", "cheese", "bun"], { order: "assorted" }),
+	it("запрещён для полуфабриката: его надо готовить, а не брать", () => {
+		expect(canRequest(takeOf("patty"), makeCook())).toBe(false);
+		expect(canRequest(takeOf("dish-burger" as LayerItem), makeCook())).toBe(
+			false,
 		);
-
-		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(true);
-		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
-	});
-
-	it("после первого bun запрашивается следующий слой, а не bun", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
-		order.placed.push("bun");
-
-		expect(canRequest(fetchOf("cheese"), makeCook({ order }))).toBe(true);
-		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(false);
-	});
-
-	it("второй bun запрашивается после cheese", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
-		order.placed.push("bun", "cheese");
-
-		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(true);
-	});
-
-	it("запрещён без заказа", () => {
-		expect(canRequest(fetchOf("bun"), makeCook({ order: null }))).toBe(false);
 	});
 
 	it("запрещён когда руки заняты", () => {
-		const order = createOrder(makeRecipe(["bun"]));
-		const cook = makeCook({ order, carry: { item: "cheese" } });
+		const cook = makeCook({ carry: { item: "cheese" } });
 
-		expect(canRequest(fetchOf("bun"), cook)).toBe(false);
+		expect(canRequest(takeOf("bun"), cook)).toBe(false);
+	});
+});
+
+describe("canRequest: transform", () => {
+	it("разрешён когда в руках предмет, трансформируемый на этой станции", () => {
+		const cook = makeCook({ carry: { item: "tomato" } });
+
+		expect(canRequest(transformAt("cutting-board"), cook)).toBe(true);
 	});
 
-	it("запрещён на собранном заказе", () => {
-		const order = createOrder(makeRecipe(["bun"]));
-		order.placed.push("bun");
+	it("запрещён с пустыми руками", () => {
+		expect(canRequest(transformAt("cutting-board"), makeCook())).toBe(false);
+	});
 
-		expect(canRequest(fetchOf("bun"), makeCook({ order }))).toBe(false);
+	it("запрещён когда предмет на этой станции не трансформируется", () => {
+		const cook = makeCook({ carry: { item: "tomato" } });
+
+		expect(canRequest(transformAt("grill"), cook)).toBe(false);
+	});
+
+	it("запрещён для готового блюда", () => {
+		const cook = makeCook({ carry: { item: "dish-burger" } });
+
+		expect(canRequest(transformAt("grill"), cook)).toBe(false);
+	});
+});
+
+describe("canRequest: drop", () => {
+	it("разрешён когда руки заняты чем угодно", () => {
+		expect(canRequest(DROP, makeCook({ carry: { item: "bun" } }))).toBe(true);
+		expect(canRequest(DROP, makeCook({ carry: { item: "dish-burger" } }))).toBe(
+			true,
+		);
+	});
+
+	it("запрещён с пустыми руками", () => {
+		expect(canRequest(DROP, makeCook())).toBe(false);
+	});
+});
+
+describe("isRequestSettled: drop", () => {
+	it("не выполнен пока предмет в руках, выполнен когда руки пусты", () => {
+		const cook = makeCook({ carry: { item: "bun" } });
+
+		expect(isRequestSettled(DROP, cook)).toBe(false);
+
+		cook.carry.item = null;
+		expect(isRequestSettled(DROP, cook)).toBe(true);
+	});
+});
+
+describe("canRequest: place", () => {
+	it("разрешён когда повар несёт нужный слой", () => {
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
+		const cook = makeCook({ order, carry: { item: "bun" } });
+
+		expect(canRequest(PLACE, cook)).toBe(true);
+	});
+
+	it("запрещён когда несёт слой не по порядку", () => {
+		const order = createOrder(makeRecipe(["bun", "cheese", "bun"]));
+		const cook = makeCook({ order, carry: { item: "cheese" } });
+
+		expect(canRequest(PLACE, cook)).toBe(false);
+	});
+
+	it("assorted: разрешён любой недостающий слой", () => {
+		const order = createOrder(
+			makeRecipe(["bun", "cheese", "bun"], { order: "assorted" }),
+		);
+		const cook = makeCook({ order, carry: { item: "cheese" } });
+
+		expect(canRequest(PLACE, cook)).toBe(true);
+	});
+
+	it("запрещён с пустыми руками, без заказа и на собранном заказе", () => {
+		const order = createOrder(makeRecipe(["bun"]));
+
+		expect(canRequest(PLACE, makeCook({ order }))).toBe(false);
+		expect(canRequest(PLACE, makeCook({ carry: { item: "bun" } }))).toBe(false);
+
+		const done = createOrder(makeRecipe(["bun"]));
+		done.placed.push("bun");
+		const cook = makeCook({ order: done, carry: { item: "bun" } });
+		expect(canRequest(PLACE, cook)).toBe(false);
 	});
 });
 
@@ -316,7 +370,15 @@ describe("canRequest: deliver", () => {
 		expect(canRequest(DELIVER, makeCook({ order: createOrder() }))).toBe(false);
 	});
 
-	it("запрещён когда руки заняты", () => {
+	it("разрешён когда повар несёт готовое блюдо", () => {
+		const order = createOrder(makeRecipe(["bun"]));
+		order.placed.push("bun");
+		const cook = makeCook({ order, carry: { item: "dish-burger" } });
+
+		expect(canRequest(DELIVER, cook)).toBe(true);
+	});
+
+	it("запрещён когда руки заняты ингредиентом", () => {
 		const order = createOrder(makeRecipe(["bun"]));
 		order.placed.push("bun");
 		const cook = makeCook({ order, carry: { item: "cheese" } });
@@ -327,48 +389,65 @@ describe("canRequest: deliver", () => {
 
 describe("isRequestSettled: get-order", () => {
 	it("не выполнен без заказа", () => {
-		expect(isRequestSettled(TAKE, makeCook({ order: null }))).toBe(false);
+		expect(isRequestSettled(ORDER, makeCook({ order: null }))).toBe(false);
 	});
 
 	it("выполнен когда заказ появился", () => {
-		expect(isRequestSettled(TAKE, makeCook({ order: createOrder() }))).toBe(
+		expect(isRequestSettled(ORDER, makeCook({ order: createOrder() }))).toBe(
 			true,
 		);
 	});
 });
 
-describe("isRequestSettled: fetch", () => {
-	it("не выполнен пока нужный слой впереди", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese"]));
-
-		expect(isRequestSettled(fetchOf("bun"), makeCook({ order }))).toBe(false);
+describe("isRequestSettled: take", () => {
+	it("не выполнен пока руки пусты", () => {
+		expect(isRequestSettled(takeOf("bun"), makeCook())).toBe(false);
 	});
 
-	it("не выполнен пока повар несёт ингредиент", () => {
+	it("выполнен когда предмет в руках", () => {
+		const cook = makeCook({ carry: { item: "bun" } });
+
+		expect(isRequestSettled(takeOf("bun"), cook)).toBe(true);
+	});
+
+	it("не выполнен когда в руках что-то другое", () => {
+		const cook = makeCook({ carry: { item: "cheese" } });
+
+		expect(isRequestSettled(takeOf("bun"), cook)).toBe(false);
+	});
+});
+
+describe("isRequestSettled: transform", () => {
+	it("не выполнен пока предмет ещё трансформируем на этой станции", () => {
+		const cook = makeCook({ carry: { item: "tomato" } });
+
+		expect(isRequestSettled(transformAt("cutting-board"), cook)).toBe(false);
+	});
+
+	it("выполнен когда предмет превратился в продукт", () => {
+		const cook = makeCook({ carry: { item: "chopped-tomato" } });
+
+		expect(isRequestSettled(transformAt("cutting-board"), cook)).toBe(true);
+	});
+
+	it("выполнен если руки опустели", () => {
+		expect(isRequestSettled(transformAt("grill"), makeCook())).toBe(true);
+	});
+});
+
+describe("isRequestSettled: place", () => {
+	it("не выполнен пока повар несёт слой", () => {
 		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order, carry: { item: "bun" } });
 
-		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
+		expect(isRequestSettled(PLACE, cook)).toBe(false);
 	});
 
-	it("выполнен после выкладки", () => {
+	it("выполнен когда руки опустели", () => {
 		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		order.placed.push("bun");
 
-		expect(isRequestSettled(fetchOf("bun"), makeCook({ order }))).toBe(true);
-	});
-
-	it("выполнен если заказ исчез", () => {
-		expect(isRequestSettled(fetchOf("bun"), makeCook({ order: null }))).toBe(
-			true,
-		);
-	});
-
-	it("не выполнен если несёт что-то другое, а слой ещё впереди", () => {
-		const order = createOrder(makeRecipe(["bun", "cheese"]));
-		const cook = makeCook({ order, carry: { item: "patty" } });
-
-		expect(isRequestSettled(fetchOf("bun"), cook)).toBe(false);
+		expect(isRequestSettled(PLACE, makeCook({ order }))).toBe(true);
 	});
 });
 
@@ -399,25 +478,28 @@ describe("связка canRequest и isRequestSettled", () => {
 	it("заказ нельзя взять дважды подряд", () => {
 		const cook = makeCook({ order: null });
 
-		expect(canRequest(TAKE, cook)).toBe(true);
+		expect(canRequest(ORDER, cook)).toBe(true);
 		cook.order = createOrder();
-		expect(canRequest(TAKE, cook)).toBe(false);
+		expect(canRequest(ORDER, cook)).toBe(false);
 	});
 
-	it("fetch нельзя повторить, пока слой не выложен", () => {
+	it("take + place проводят слой от полки до заказа", () => {
 		const order = createOrder(makeRecipe(["bun", "cheese"]));
 		const cook = makeCook({ order });
-		const request = fetchOf("bun");
 
-		expect(canRequest(request, cook)).toBe(true);
-		expect(isRequestSettled(request, cook)).toBe(false);
+		const take = takeOf("bun");
+		expect(canRequest(take, cook)).toBe(true);
+		expect(isRequestSettled(take, cook)).toBe(false);
 
 		cook.carry.item = "bun";
-		expect(isRequestSettled(request, cook)).toBe(false);
+		expect(isRequestSettled(take, cook)).toBe(true);
+
+		expect(canRequest(PLACE, cook)).toBe(true);
+		expect(isRequestSettled(PLACE, cook)).toBe(false);
 
 		order.placed.push("bun");
 		cook.carry.item = null;
-		expect(isRequestSettled(request, cook)).toBe(true);
+		expect(isRequestSettled(PLACE, cook)).toBe(true);
 	});
 
 	it("весь заказ проходит цепочкой запросов в порядке рецепта", () => {
@@ -439,14 +521,16 @@ describe("связка canRequest и isRequestSettled", () => {
 				break;
 			}
 
-			const request = fetchOf(next);
-			if (!canRequest(request, cook)) break;
+			const take = takeOf(next);
+			if (!canRequest(take, cook)) break;
 			used.push(next);
 			cook.carry.item = next;
-			expect(isRequestSettled(request, cook)).toBe(false);
+			expect(isRequestSettled(take, cook)).toBe(true);
+
+			if (!canRequest(PLACE, cook)) break;
 			order.placed.push(next);
 			cook.carry.item = null;
-			expect(isRequestSettled(request, cook)).toBe(true);
+			expect(isRequestSettled(PLACE, cook)).toBe(true);
 		}
 
 		expect(used).toEqual(["bun", "cheese", "bun", "deliver"]);

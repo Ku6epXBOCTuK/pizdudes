@@ -4,6 +4,8 @@ export const SERVING_COUNTER = "serving-counter";
 
 export const CASH_REGISTER = "cash-register";
 
+export const TRASH_CAN = "trash-can";
+
 export const RAW_ITEMS = [
 	"bun",
 	"baguette",
